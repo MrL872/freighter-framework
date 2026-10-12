@@ -1,0 +1,38 @@
+# Overrides for running inside docker-compose (SPRING_PROFILES_ACTIVE=docker).
+# Every path here is the in-container mount point defined in
+# docker-compose.yml's backend service; the base application.yml's "../data/..."
+# defaults only apply when running from the backend/ directory directly.
+
+spring:
+  datasource:
+    # Embedded Derby, bind-mounted from ./data/derby (see compose).
+    url: jdbc:derby:${DERBY_DATABASE_DIR:/data/derby}/applicationdb;create=true
+    driver-class-name: org.apache.derby.jdbc.EmbeddedDriver
+
+project-storage:
+  # Read-write here; mounted read-only into every worker (see compose).
+  directory: ${PROJECT_STORAGE_DIRECTORY:/data/project-storage}
+
+wordlists:
+  # Read-write here (the [ file ] menu's "Upload Wordlists" folder picker
+  # writes to it); read-only in every tool worker (see compose).
+  directory: ${WORDLISTS_DIRECTORY:/data/wordlists}
+
+configs:
+  # Read-write here (the [ file ] menu's "Upload Configs" folder picker
+  # writes to it); read-only in every worker whose tool accepts an external
+  # config file (see compose).
+  directory: ${CONFIGS_DIRECTORY:/data/configs}
+
+nuclei-templates:
+  # Read-write here (the [ file ] menu's "Upload Nuclei Templates" folder
+  # picker writes to it) and on nuclei-worker, which mounts the same host
+  # folder at its own, different in-container path (see compose).
+  directory: ${NUCLEI_TEMPLATES_DIRECTORY:/data/nuclei-templates}
+
+image-storage:
+  # Only the backend mounts this directory; workers never write to it.
+  directory: ${IMAGE_STORAGE_DIRECTORY:/data/image-storage}
+
+server:
+  port: ${SERVER_PORT:8080}

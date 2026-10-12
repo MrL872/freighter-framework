@@ -1,0 +1,39 @@
+.profile { position: relative; }
+#profile-btn { display: flex; align-items: center; gap: 8px; max-width: 200px; }
+#profile-btn .pname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile-icon { width: 16px; height: 16px; flex: none; display: block; filter: brightness(0) invert(1); }
+/* Same fade/slide-in treatment as the header's [ file ]/[ view ]/etc.
+   dropdowns (see menu.css) — .open replaces the `hidden` attribute so the
+   transition can run instead of snapping between display: none and block. */
+#profile-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); min-width: 220px; z-index: 10;
+  background: var(--panel); border: 1px solid var(--ok); list-style: none; margin: 0; padding: 4px 0;
+  opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(-6px);
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0s linear 0.15s;
+}
+#profile-menu.open {
+  opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(0);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  #profile-menu { transition: opacity 0.15s ease, visibility 0s linear 0.15s; transform: none; }
+  #profile-menu.open { transition: opacity 0.15s ease; }
+}
+#profile-menu .menu-head { padding: 4px 12px; color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; }
+#profile-menu button { display: flex; align-items: center; gap: 10px; width: 100%; color: inherit; cursor: pointer; text-align: left; background: transparent; border: 0; padding: 6px 12px; }
+#profile-menu button:hover { background: #1f1f1f; color: var(--ok); }
+#profile-menu .pick { flex: 1; min-width: 0; }
+#profile-menu .pick .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#profile-menu li.row { display: flex; align-items: center; padding-right: 6px; }
+#profile-menu li.row:hover { background: #1f1f1f; }
+#profile-menu li.row .del { width: auto; padding: 2px 8px; color: var(--muted); visibility: hidden; flex: none; }
+#profile-menu li.row:hover .del, #profile-menu li.row:focus-within .del { visibility: visible; }
+#profile-menu li.row .del:hover { color: var(--ok); background: transparent; }
+#profile-menu .none { padding: 6px 12px; color: var(--muted); }
+#profile-menu form { display: flex; gap: 6px; padding: 6px 12px 8px; }
+#profile-menu form input { flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--border); color: var(--text); font: inherit; padding: 2px 6px; outline: 0; caret-color: var(--ok); }
+#profile-menu form input:focus { border-color: var(--ok); }
+#profile-menu form button { width: auto; padding: 2px 10px; border: 1px solid var(--border); }
+#profile-menu .err { padding: 0 12px 6px; color: var(--muted); font-size: 0.75rem; }
+#profile-menu .check { width: 1em; color: var(--ok); }
+#profile-menu hr { border: 0; border-top: 1px dashed var(--border); margin: 4px 0; }

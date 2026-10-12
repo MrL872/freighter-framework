@@ -1,0 +1,29 @@
+.menubar { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.menu { position: relative; }
+/* Top-level menu buttons reuse .icon-btn (see static/base.css) so every
+   header button — left or right — shares the same rest/hover outline.
+   The "//" separator (.menu-sep) is defined in base.css since it's also
+   used between the header-right components. */
+/* Dropdowns toggle with the .open class (set by menu.js), not the `hidden` attribute, because display: none
+   cannot be transitioned. The closed state stays in layout but is invisible and non-interactive, via
+   visibility + opacity + pointer-events. visibility's transition is delayed so it only flips to hidden after
+   the fade-out finishes. Opening flips it back immediately. */
+.menu ul {
+  position: absolute; left: 0; top: calc(100% + 6px); min-width: 210px; z-index: 10;
+  background: var(--panel); border: 1px solid var(--ok); list-style: none; margin: 0; padding: 4px 0;
+  opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(-6px);
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0s linear 0.15s;
+}
+.menu ul.open {
+  opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(0);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .menu ul { transition: opacity 0.15s ease, visibility 0s linear 0.15s; transform: none; }
+  .menu ul.open { transition: opacity 0.15s ease; }
+}
+.menu li button { display: flex; justify-content: space-between; gap: 16px; width: 100%; text-align: left; background: transparent; border: 0; padding: 6px 12px; white-space: nowrap; }
+.menu li button:hover:not(:disabled) { background: #1f1f1f; color: var(--ok); }
+.menu li button:disabled { color: var(--muted); opacity: 0.4; cursor: default; }
+.menu li .soon { color: var(--muted); opacity: 0.7; font-size: 0.75rem; }
+.menu hr { border: 0; border-top: 1px dashed var(--border); margin: 4px 0; }

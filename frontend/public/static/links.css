@@ -1,0 +1,74 @@
+#links-sidebar {
+  width: var(--links-w);
+  flex: none;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: width 0.2s ease;
+}
+#links-sidebar.collapsed { width: var(--links-w-collapsed); }
+.links-head { display: flex; align-items: center; border-bottom: 1px solid var(--border); }
+.links-head .pane-title { flex: 1; border-bottom: 0; overflow: hidden; white-space: nowrap; padding-left: 0; }
+#links-toggle { background: transparent; border: 0; width: var(--links-w-collapsed); height: 39px; flex: none; }
+#links-toggle:hover { color: var(--ok); }
+/* Holds #links-list and grows to fill the sidebar, so .links-storage below
+   it always sits at the bottom instead of right after the last group. */
+.links-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+#links-list { list-style: none; margin: 0; padding: 8px 0; overflow-x: hidden; overflow-y: auto; }
+#links-list .link-btn { display: flex; align-items: center; width: 100%; padding: 6px 0; background: transparent; border: 0; color: var(--text); white-space: nowrap; text-align: left; }
+#links-list .link-btn:hover { background: #1f1f1f; color: var(--ok); text-decoration: none; }
+#links-list .link-btn[aria-current] { color: var(--ok); background: #1f1f1f; }
+#links-list .glyph { width: var(--links-w-collapsed); text-align: center; color: var(--accent); flex: none; }
+#links-sidebar.collapsed #links-list .link-label,
+#links-sidebar.collapsed .pane-title { visibility: hidden; transition: visibility 0s 0.2s; }
+
+.link-group-head { display: flex; align-items: center; width: 100%; padding: 6px 0; background: transparent; border: 0; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75rem; white-space: nowrap; text-align: left; }
+.link-group-head:hover { background: #1f1f1f; color: var(--ok); }
+/* A single ">" glyph rotates in place to "point down" when expanded,
+   instead of swapping characters. */
+.link-group-head .glyph { width: auto; font-size: 1em; line-height: 1; display: inline-block; text-align: left; margin-right: 6px; transform: rotate(0deg); transition: transform 0.2s ease; }
+.link-group-head[aria-expanded="true"] .glyph { transform: rotate(90deg); }
+/* Smooth rollout: the wrapper animates its grid row from 0fr to 1fr (an
+   auto-height-friendly alternative to animating max-height), with the
+   actual list clipped to that row via overflow: hidden. */
+.link-group-items-wrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.2s ease; }
+.link-group-items-wrap.open { grid-template-rows: 1fr; }
+.link-group-items { list-style: none; margin: 0; padding: 0; overflow: hidden; min-height: 0; }
+.link-group-items .link-btn .link-label { padding-left: 8px; }
+@media (prefers-reduced-motion: reduce) {
+  .link-group-items-wrap, .link-group-head .glyph { transition: none; }
+}
+
+/* Visible boundary between each group of workers when expanded. */
+#links-list > .link-group { border-bottom: 1px dashed var(--border); padding-bottom: 4px; margin-bottom: 4px; }
+#links-list > .link-group:last-child { border-bottom: 0; margin-bottom: 0; padding-bottom: 0; }
+
+/* Drag-and-drop reordering: both top-level <li> (flat links, or whole
+   groups) and each group's own item <li> are draggable — see
+   makeSortable() in links.js. */
+#links-list li[draggable="true"] { cursor: grab; }
+#links-list li.dragging { opacity: 0.4; }
+.link-group.dragging > .link-group-head { color: var(--ok); }
+
+@media (prefers-reduced-motion: reduce) {
+  #links-list li { transition: none !important; }
+}
+
+/* Project Folder: the one link outside the group/worker list, pinned to the
+   bottom of the sidebar below every group and option (see .links-body
+   above) — opens a per-profile storage page instead of a worker view. */
+.links-storage { flex: none; border-top: 1px solid var(--border); }
+.links-storage .link-btn { display: flex; align-items: center; width: 100%; padding: 6px 0; background: transparent; border: 0; color: var(--text); white-space: nowrap; text-align: left; }
+.links-storage .link-btn:hover { background: #1f1f1f; color: var(--ok); }
+.links-storage .link-btn[aria-current] { color: var(--ok); background: #1f1f1f; }
+.links-storage .glyph { width: var(--links-w-collapsed); text-align: center; color: var(--accent); flex: none; }
+/* Project Folder's glyph is an icon image, not emoji text like Image
+   Storage's -- forced to flat white the same way profile.css's
+   .profile-icon and chat.css's .chat-toggle img are, so it reads correctly
+   on the app's dark panel background. html.inverted's page-wide filter:
+   invert(1) (see theme.js) flips it to black for the light theme the same
+   way it flips everything else, with no separate light-theme rule needed. */
+.links-storage .glyph img { width: 16px; height: 16px; vertical-align: middle; filter: brightness(0) invert(1); }
+#links-sidebar.collapsed .links-storage .link-label { visibility: hidden; transition: visibility 0s 0.2s; }

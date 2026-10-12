@@ -1,0 +1,19 @@
+{
+  "name": "freighter-frontend",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Overview panel and API gateway for the freighter-framework backend",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "http-proxy-middleware": "^3.0.0"
+  },
+  "overrides": {
+    "http-proxy-middleware": {
+      "http-proxy": "npm:http-proxy-node16@^1.0.6"
+    }
+  }
+}

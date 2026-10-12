@@ -1,0 +1,216 @@
+/* Critical shell styles: layout skeleton needed before any component paints. */
+/* Share Tech Mono, self-hosted (fonts/share-tech-mono.woff2) rather than
+   loaded from Google Fonts -- this app has no CDN dependency anywhere else
+   (no bundler, no third-party script/stylesheet host), and the font is no
+   exception. --mono's own fallback chain below still applies if this fails
+   to load for any reason. */
+@font-face {
+  font-family: "Share Tech Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/share-tech-mono.woff2") format("woff2");
+}
+:root {
+  --bg: #0c0c0c;
+  --panel: #121212;
+  --border: #2b2b2b;
+  --text: #ffffff;
+  --muted: #ffffff;
+  --ok: #ffffff;
+  --bad: #ffffff;
+  --warn: #ffffff;
+  --accent: #ffffff;
+  --prompt: #ffffff;
+  --header-h: 32px;
+  --chat-w: 380px;
+  /* Wide enough for the longest group heading in links.js's DEFAULT_GROUPS
+     ("Vulnerability Specific Tools", uppercased with 0.08em letter-spacing
+     in .link-group-head) to fit on one line without clipping. */
+  --links-w: 290px;
+  --links-w-collapsed: 44px;
+  --mono: "Share Tech Mono", "Cascadia Mono", Consolas, "Lucida Console", monospace;
+}
+/* [ view ] menu's theme toggle (see js/theme.js) — transitioning filter
+   here rather than snapping straight to invert(1) so light/dark switches
+   fade in instead of flashing. */
+html { transition: filter 0.3s ease; }
+html.inverted { filter: invert(1); }
+@media (prefers-reduced-motion: reduce) {
+  html { transition: none; }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 1px dashed var(--ok); outline-offset: 2px; }
+
+header {
+  position: relative;
+  min-height: var(--header-h);
+  flex: none;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "left search right";
+  align-items: center;
+  gap: 16px;
+  padding: 6px 12px;
+  background: #1a1a1a;
+  border-bottom: 1px solid var(--border);
+  overflow: visible;
+}
+/* Side columns size to their content (never shrink/scroll) so their
+   dropdowns can escape the header and hover over main; the search column
+   simply takes whatever space is left between them. */
+.header-left {
+  grid-area: left;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.header-right {
+  grid-area: right;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+[data-component="search"] {
+  grid-area: search;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+
+@media (max-width: 640px) {
+  header {
+    grid-template-columns: auto auto;
+    grid-template-areas:
+      "left right"
+      "search search";
+    row-gap: 6px;
+  }
+}
+/* Shared "//" separator between clickable header options, left or right. */
+.menu-sep { color: var(--muted); flex: none; }
+.icon-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 4px 10px;
+  white-space: nowrap;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.icon-btn:hover, .icon-btn[aria-expanded="true"] { border-color: var(--ok); color: var(--ok); }
+/* Icon is black-on-transparent; invert(1) here makes it render white in the
+   default dark theme. html.inverted (js/theme.js) then applies its own
+   page-wide invert(1), which composes with this one and cancels it back to
+   black for the light theme -- so the logo always contrasts with --bg. */
+.logo { width: 26px; height: 26px; flex: none; display: block; image-rendering: auto; filter: grayscale(1) invert(1); }
+
+/* Hamburger fallback: below the breakpoint, the menu nav (left) and the
+   profile/chat-toggle group (right) hide in normal flow and reappear as
+   dropdown panels anchored under their own side, toggled by one button —
+   see setupHeaderHamburger() in index.js. Hidden above the breakpoint, and
+   hidden by default below it too (only header.nav-open reveals the panels),
+   so nothing shifts layout just because the button exists in the DOM. */
+.hamburger-btn { display: none; }
+@media (max-width: 640px) {
+  .hamburger-btn { display: inline-flex; grid-area: right; justify-self: end; }
+  .header-left [data-component="menu"],
+  .header-right { display: none; }
+  header.nav-open .header-left [data-component="menu"] {
+    display: block; position: absolute; top: 100%; left: 0; z-index: 20;
+    background: #1a1a1a; border: 1px solid var(--border); padding: 8px; margin-top: 1px;
+  }
+  header.nav-open .header-left [data-component="menu"] .menubar { flex-direction: column; align-items: flex-start; gap: 4px; }
+  header.nav-open .header-left [data-component="menu"] .menu-sep { display: none; }
+  header.nav-open .header-right {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+    position: absolute; top: 100%; right: 0; z-index: 20;
+    background: #1a1a1a; border: 1px solid var(--border); padding: 8px; margin-top: 1px;
+  }
+  header.nav-open .header-right .menu-sep { display: none; }
+}
+
+@media (max-width: 640px) {
+  [data-component="search"] { order: 4; flex: 1 1 100%; max-width: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #chat-sidebar, #links-sidebar { transition: none; }
+  .cursor { animation: none; }
+}
+
+.layout { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+/* .content is the stacking context. The links-rail is a real flex child
+   that reserves the sidebar's collapsed width in normal flow, so the
+   default (collapsed) state does not overlay main — main's flex-basis
+   already accounts for it. #links-sidebar itself is absolutely positioned
+   over that same rail; only growing past the rail's width (i.e. expanding)
+   spills over main. #chat-sidebar has no reserved rail and always overlays
+   main directly, since it is 0-width when closed. */
+.content { position: relative; flex: 1; min-height: 0; display: flex; }
+.links-rail { flex: none; width: var(--links-w-collapsed); }
+main {
+  position: relative; flex: 1; z-index: 0;
+  min-width: 0; min-height: 0; display: grid; grid-template-rows: minmax(0, 3fr) minmax(0, 7fr); overflow: hidden;
+}
+/* Only transitions on the overview page — worker/Project Folder pages swap
+   this to a completely different two-row shape (main[data-worker]/[data-page]
+   below) on navigation, and animating that switch would look like an
+   unwanted flicker rather than a deliberate collapse. */
+main:not([data-worker]):not([data-page]) { transition: grid-template-rows 0.2s ease; }
+/* [ view ] menu's "Hide/Show Overview Metrics" (see js/metricsVisibility.js)
+   toggles this on <html>. Shrinking the .metrics row's fr share to 0 — kept
+   as a second track rather than collapsing to a single row — lets the
+   change transition smoothly instead of jumping straight to the ledger's
+   final size; .metrics itself needs no separate hiding since a 0-height
+   grid cell combined with its own overflow: auto already clips it. */
+.metrics-hidden main { grid-template-rows: minmax(0, 0fr) minmax(0, 7fr); }
+#links-sidebar, #chat-sidebar { position: absolute; top: 0; bottom: 0; z-index: 2; }
+#links-sidebar { left: 0; box-shadow: 2px 0 12px rgba(0, 0, 0, 0.5); }
+#chat-sidebar { right: 0; box-shadow: -2px 0 12px rgba(0, 0, 0, 0.5); }
+
+footer {
+  flex: none; z-index: 1;
+  background: #1a1a1a; border-top: 1px solid var(--border);
+  color: var(--muted); font-size: 0.8rem;
+}
+footer .footer-text { padding: 6px 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cursor { display: inline-block; width: 0.6em; height: 1em; background: var(--ok); vertical-align: text-bottom; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+.pane-title {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 0.75rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.tool-btn { background: transparent; border: 1px solid transparent; padding: 2px 8px; color: var(--muted); transition: border-color 0.15s ease, color 0.15s ease; }
+.tool-btn:hover { border-color: var(--border); color: var(--ok); }
+.tool-btn[aria-pressed="true"] { border-color: var(--ok); color: var(--ok); }
+[hidden] { display: none !important; }
+.muted { color: var(--muted); }
+
+/* Component mount points render nothing until their module loads; keep them
+   invisible-but-sized so the shell doesn't jump when they resolve. */
+[data-component] { min-width: 0; min-height: 0; }
+.component-error { padding: 12px; color: var(--muted); font-size: 0.8rem; border: 1px dashed var(--border); }

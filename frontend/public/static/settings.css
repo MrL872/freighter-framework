@@ -1,0 +1,48 @@
+/* Settings dialog (js/components/settings.js). Uses the app's theme variables. */
+.settings-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+}
+.settings-panel {
+  width: min(620px, 100%); max-height: calc(100vh - 32px); overflow-y: auto;
+  background: var(--panel); border: 3px double var(--muted);
+  padding: 0 16px 16px; color: var(--text);
+  font-family: var(--mono); font-size: 0.85rem;
+}
+.settings-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--muted); }
+.settings-head h2 { margin: 0; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 400; }
+.settings-section { padding: 12px 0; border-bottom: 1px dashed var(--border); display: flex; flex-direction: column; gap: 8px; }
+.settings-section h3 { margin: 0; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 400; color: var(--muted); }
+.settings-section h4 { margin: 4px 0 0; padding-top: 8px; border-top: 1px dashed var(--border); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 400; color: var(--muted); }
+.settings-toggle { display: flex; align-items: center; gap: 6px; }
+.settings-toggle input { height: auto; width: auto; padding: 0; }
+.settings-status { margin: 0; color: var(--muted); }
+.settings-status[data-state="ok"] { color: var(--ok); }
+.settings-hint { margin: 0; color: var(--muted); font-size: 0.75rem; }
+.settings-field { display: flex; flex-direction: column; gap: 4px; }
+.settings-field span { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.settings-overlay input, .settings-overlay select {
+  background: var(--bg); border: 1px solid var(--border); color: var(--text);
+  font: inherit; height: 30px; padding: 0 8px; min-width: 0;
+}
+.settings-save-row { display: flex; gap: 6px; }
+.settings-model-row { display: flex; gap: 6px; }
+.settings-model-row select { flex: 1; }
+.settings-model-row button { align-self: auto; white-space: nowrap; }
+.settings-chats-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; }
+/* Fixed height of about three rows: adding chats scrolls inside this box and never resizes the dialog. */
+.settings-chat-rows { height: 116px; overflow-y: auto; padding-right: 4px; }
+.settings-chat-row { display: grid; grid-template-columns: 1fr 1.4fr auto; gap: 6px; margin-bottom: 6px; }
+.settings-workers { max-height: 220px; overflow-y: auto; border: 1px solid var(--border); padding: 6px 8px; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 4px 12px; }
+.settings-worker { display: flex; align-items: center; gap: 6px; }
+.settings-mode { color: var(--muted); font-size: 0.7rem; margin-left: auto; }
+.settings-overlay button {
+  background: transparent; border: 1px solid var(--border); color: var(--muted);
+  font: inherit; padding: 4px 10px; cursor: pointer; align-self: flex-start;
+}
+.settings-overlay button:hover, .settings-overlay button:focus-visible { color: var(--ok); border-color: var(--ok); }
+.settings-overlay button:disabled { opacity: 0.5; cursor: not-allowed; }
+.settings-close, .settings-add, .settings-remove { border: 0 !important; padding: 2px 4px !important; }
+.settings-msg { margin: 0; min-height: 1.2em; color: var(--muted); font-size: 0.75rem; }

@@ -1,0 +1,254 @@
+spring:
+  application:
+    name: freighter-framework
+
+  servlet:
+    multipart:
+      # Spring Boot's own defaults (1MB/10MB) are sized for a form upload, not
+      # a wordlist file or a nuclei-templates folder upload (one HTTP request
+      # per file -- see folderUpload.js); WordlistsController/
+      # NucleiTemplatesController each still enforce their own 300MB-per-file
+      # ceiling on top of this and return a clean error instead of this
+      # being the only thing standing in the way.
+      max-file-size: 300MB
+      max-request-size: 300MB
+
+  datasource:
+    # "../data/derby" (not "./data/derby") deliberately -- mvn is run from
+    # this module's own directory (backend/), so a "./" default would create
+    # a second, separate data/ directory inside backend/ instead of landing
+    # in the repo root's data/ alongside what Docker Compose uses (see
+    # docker-compose.yml's backend service, which bind-mounts the repo
+    # root's ./data/derby to /data/derby in-container -- application-docker.yml's
+    # own DERBY_DATABASE_DIR default is that in-container path). One
+    # physical directory either way, instead of the two independent Derby
+    # databases a "./data/derby" default silently produced before.
+    url: jdbc:derby:${DERBY_DATABASE_DIR:../data/derby}/applicationdb;create=true
+    driver-class-name: org.apache.derby.jdbc.EmbeddedDriver
+
+freighter:
+  database:
+    migrations-location: classpath:db/migrations
+
+project-storage:
+  # Project Folder's actual storage (see ProjectFileService) -- must match
+  # project-storage's mount path in docker-compose.yml on the backend
+  # (read-write) and every worker (read-only). "../data/project-storage" for
+  # the same reason as DERBY_DATABASE_DIR above -- lands in the repo root's
+  # data/project-storage, the same physical directory Docker Compose
+  # bind-mounts, rather than a separate one inside backend/.
+  directory: ${PROJECT_STORAGE_DIRECTORY:../data/project-storage}
+  # What Project Folder accepts (see ProjectFileService): file types by extension,
+  # and the largest file in bytes (1048576 = 1024 KB). Keep the frontend's
+  # ALLOWED_PROJECT_EXTENSIONS and MAX_PROJECT_FILE_BYTES (projectFolder.js) in step.
+  allowed-extensions: txt,md,json,jsonl,xml,csv,html,sqlite,sqlite3,db,yaml,yml,js,ini,log,sarif,har,nmap,gnmap
+  max-file-bytes: 1048576
+
+wordlists:
+  # Shared wordlist folder for the control panel's wordlist browser (see
+  # WordlistService) and the [ file ] menu's "Upload Wordlists" folder picker.
+  # Not per profile. Read-write on the backend, read-only on every tool
+  # worker (see docker-compose.yml) -- only the backend writes here.
+  directory: ${WORDLISTS_DIRECTORY:../data/wordlists}
+
+configs:
+  # Shared external-config folder for the control panel's config browser
+  # (see ConfigsService) and the [ file ] menu's "Upload Configs" folder
+  # picker. Not per profile. Read-write on the backend, read-only on every
+  # worker whose tool accepts an external config file (see
+  # docker-compose.yml) -- only the backend writes here.
+  directory: ${CONFIGS_DIRECTORY:../data/configs}
+
+nuclei-templates:
+  # Shared template folder nuclei-worker scans with (see NucleiTemplatesService
+  # and the [ file ] menu's "Upload Nuclei Templates" folder picker). Not per
+  # profile. Read-write on both the backend and nuclei-worker (see
+  # docker-compose.yml) -- populating it by dropping files directly into
+  # ./data/nuclei-templates on the host still works exactly as before; this
+  # is just a second, in-app way to do the same thing.
+  directory: ${NUCLEI_TEMPLATES_DIRECTORY:../data/nuclei-templates}
+
+image-storage:
+  # Image Storage's actual storage (see ImageFileService) -- same
+  # "../data/..." convention as project-storage above, matching
+  # docker-compose.yml's image-storage bind mount on the backend service.
+  directory: ${IMAGE_STORAGE_DIRECTORY:../data/image-storage}
+
+subfinder:
+  worker:
+    # Docker-network address of the persistent subfinder-worker service (see
+    # docker-compose.yml). Defaults to the compose service's own DNS name.
+    base-url: ${SUBFINDER_WORKER_URL:http://subfinder-worker:8080}
+
+shuffledns:
+  worker:
+    # Docker-network address of the persistent shuffledns-worker service (see
+    # docker-compose.yml). Defaults to the compose service's own DNS name.
+    base-url: ${SHUFFLEDNS_WORKER_URL:http://shuffledns-worker:8080}
+
+gau:
+  worker:
+    # Docker-network address of the persistent gau-worker service (see
+    # docker-compose.yml). Defaults to the compose service's own DNS name.
+    base-url: ${GAU_WORKER_URL:http://gau-worker:8080}
+
+gitleaks:
+  worker:
+    # Docker-network address of the persistent gitleaks-worker service (see
+    # docker-compose.yml). Defaults to the compose service's own DNS name.
+    base-url: ${GITLEAKS_WORKER_URL:http://gitleaks-worker:8080}
+
+nuclei:
+  worker:
+    # Docker-network address of the persistent nuclei-worker service (see
+    # docker-compose.yml). Defaults to the compose service's own DNS name.
+    base-url: ${NUCLEI_WORKER_URL:http://nuclei-worker:8080}
+
+ffuf:
+  worker:
+    # Docker-network address of the persistent ffuf-worker service (see
+    # docker-compose.yml). Defaults to the compose service's own DNS name.
+    base-url: ${FFUF_WORKER_URL:http://ffuf-worker:8080}
+
+katana:
+  worker:
+    # Docker-network address of the persistent katana-worker service (see
+    # docker-compose.yml). Defaults to the compose service's own DNS name.
+    base-url: ${KATANA_WORKER_URL:http://katana-worker:8080}
+
+puredns:
+  worker:
+    # Docker-network address of the persistent puredns-worker service (see
+    # docker-compose.yml). Defaults to the compose service's own DNS name.
+    base-url: ${PUREDNS_WORKER_URL:http://puredns-worker:8080}
+
+gowitness:
+  worker:
+    # Docker-network address of the persistent gowitness-worker service (see
+    # docker-compose.yml). Defaults to the compose service's own DNS name.
+    base-url: ${GOWITNESS_WORKER_URL:http://gowitness-worker:8080}
+
+nmap:
+  worker:
+    # Docker-network address of the persistent nmap-worker service (see
+    # docker-compose.yml). Defaults to the compose service's own DNS name.
+    base-url: ${NMAP_WORKER_URL:http://nmap-worker:8080}
+
+dirsearch:
+  worker:
+    # Docker-network address of the persistent dirsearch-worker service (see
+    # docker-compose.yml). Defaults to the compose service's own DNS name.
+    base-url: ${DIRSEARCH_WORKER_URL:http://dirsearch-worker:8080}
+
+fuxploider:
+  worker:
+    # Docker-network address of the persistent fuxploider-worker service (see
+    # docker-compose.yml). Defaults to the compose service's own DNS name.
+    base-url: ${FUXPLOIDER_WORKER_URL:http://fuxploider-worker:8080}
+
+hydra:
+  worker:
+    # Docker-network address of the persistent hydra-worker service (see
+    # docker-compose.yml). Defaults to the compose service's own DNS name.
+    base-url: ${HYDRA_WORKER_URL:http://hydra-worker:8080}
+
+jwt-tool:
+  worker:
+    # Docker-network address of the persistent jwt-tool-worker service (see
+    # docker-compose.yml). Defaults to the compose service's own DNS name.
+    base-url: ${JWT_TOOL_WORKER_URL:http://jwt-tool-worker:8080}
+
+nosqlmap:
+  worker:
+    # Docker-network address of the persistent nosqlmap-worker service (see
+    # docker-compose.yml). Defaults to the compose service's own DNS name.
+    base-url: ${NOSQLMAP_WORKER_URL:http://nosqlmap-worker:8080}
+
+sqlmap:
+  worker:
+    # Docker-network address of the persistent sqlmap-worker service (see
+    # docker-compose.yml). Defaults to the compose service's own DNS name.
+    base-url: ${SQLMAP_WORKER_URL:http://sqlmap-worker:8080}
+
+sstimap:
+  worker:
+    # Docker-network address of the persistent sstimap-worker service (see
+    # docker-compose.yml). Defaults to the compose service's own DNS name.
+    base-url: ${SSTIMAP_WORKER_URL:http://sstimap-worker:8080}
+
+wafw00f:
+  worker:
+    # Docker-network address of the persistent wafw00f-worker service (see
+    # docker-compose.yml). Defaults to the compose service's own DNS name.
+    base-url: ${WAFW00F_WORKER_URL:http://wafw00f-worker:8080}
+
+wpscan:
+  worker:
+    # Docker-network address of the persistent wpscan-worker service (see
+    # docker-compose.yml). Defaults to the compose service's own DNS name.
+    base-url: ${WPSCAN_WORKER_URL:http://wpscan-worker:8080}
+
+xsstrike:
+  worker:
+    # Docker-network address of the persistent xsstrike-worker service (see
+    # docker-compose.yml). Defaults to the compose service's own DNS name.
+    base-url: ${XSSTRIKE_WORKER_URL:http://xsstrike-worker:8080}
+
+masscan:
+  worker:
+    # Docker-network address of the persistent masscan-worker service (see
+    # docker-compose.yml). Defaults to the compose service's own DNS name.
+    base-url: ${MASSCAN_WORKER_URL:http://masscan-worker:8080}
+
+metasploit:
+  worker:
+    # Docker-network address of the persistent metasploit-worker service (see
+    # docker-compose.yml). Defaults to the compose service's own DNS name.
+    base-url: ${METASPLOIT_WORKER_URL:http://metasploit-worker:8080}
+
+settings:
+  # Telegram bot token and chats (data/telegram), the MCP gateway config
+  # (data/mcp-gateway), the chat agent's cloud-model toggle/API key
+  # (data/llm) and its local-model toggle/base URL/API key/model id
+  # (data/local-llm). All four are written only by the backend.
+  telegram-dir: ${SETTINGS_TELEGRAM_DIR:../data/telegram}
+  mcp-gateway-config: ${SETTINGS_MCP_GATEWAY_CONFIG:../data/mcp-gateway/config.json}
+  llm-dir: ${SETTINGS_LLM_DIR:../data/llm}
+  local-llm-dir: ${SETTINGS_LOCAL_LLM_DIR:../data/local-llm}
+  # Where TelegramClient sends its request. Locally (no Docker) this is
+  # api.telegram.org directly. In docker-compose.yml, backend-network has no
+  # route to the internet, so this is overridden to the telegram-worker
+  # service, which relays the request on (see its own README.md).
+  telegram-api-base: ${SETTINGS_TELEGRAM_API_BASE:https://api.telegram.org}
+  # The telegram-worker container's own address, used only by
+  # ServicesStatusController's reachability check (GET /health). Kept
+  # separate from telegram-api-base above, which points at the real Telegram
+  # API outside Docker -- a status poll must never dial out to it.
+  telegram-worker-url: ${SETTINGS_TELEGRAM_WORKER_URL:http://telegram-worker:8080}
+
+chat:
+  # MCP gateway that runs worker tools for the chat agent (see mcp-gateway/).
+  mcp-gateway-url: ${MCP_GATEWAY_URL:http://mcp-gateway:8811}
+  # Cloud model. The key is read from the host environment, never sent to the browser.
+  anthropic:
+    base-url: ${ANTHROPIC_BASE_URL:https://api.anthropic.com}
+    api-key: ${ANTHROPIC_API_KEY:}
+    model: ${ANTHROPIC_MODEL:claude-sonnet-5}
+  # Local or self-hosted model through an OpenAI-compatible server (Ollama, LM Studio).
+  openai-compatible:
+    base-url: ${LLM_BASE_URL:}
+    api-key: ${LLM_API_KEY:}
+    model: ${LLM_MODEL:}
+
+elasticsearch:
+  # Docker-network address of the elasticsearch service (see
+  # docker-compose.yml). The backend is the only service that writes to the
+  # index. ElasticsearchIndexer and ElasticsearchQueryService call this URL
+  # over plain REST, with no credentials. Security is off because the node
+  # is internal only (see elastic-search/elasticsearch.yml).
+  url: ${ELASTICSEARCH_URL:http://elasticsearch:9200}
+  retry:
+    interval-ms: ${ELASTICSEARCH_RETRY_INTERVAL_MS:30000}
+
+server:
+  port: ${SERVER_PORT:8080}

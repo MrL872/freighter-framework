@@ -1,0 +1,765 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+
+    image: freighter-framework:latest
+    container_name: freighter-framework
+
+    restart: unless-stopped
+
+    ports:
+      - "8080:8080"
+
+    # Resolves host.docker.internal to the Docker host's own gateway IP, so
+    # MANUAL.md's "Local model" examples (LM Studio, Ollama, ...) work the
+    # same way on Linux's Docker Engine as they already do for free on
+    # Docker Desktop (Windows/Mac), which defines this name itself. Without
+    # this, a Linux host has no host.docker.internal at all, and the
+    # container-side connection to it fails outright.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+
+      # Embedded Apache Derby
+      SPRING_DATASOURCE_URL: "jdbc:derby:/data/derby/applicationdb;create=true"
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: "org.apache.derby.jdbc.EmbeddedDriver"
+
+      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+
+      # Project Folder's real storage (see ProjectFileService) -- must match
+      # project-storage's mount path on every worker service below.
+      PROJECT_STORAGE_DIRECTORY: "/data/project-storage"
+
+      # Image storage (see ImageFileService). Must match
+      # the image-storage mount below.
+      IMAGE_STORAGE_DIRECTORY: "/data/image-storage"
+
+      # Docker-network address of the elasticsearch service (see the
+      # elasticsearch service block below) -- reached over
+      # sixth-elasticsearch-to-backend-network, see this service's own
+      # networks: entry.
+      ELASTICSEARCH_URL: "http://elasticsearch:9200"
+      # Chat agent (see backend/README.md). Leave blank to disable a provider.
+      MCP_GATEWAY_URL: "http://mcp-gateway:8811"
+      # Settings the backend reads and writes (see backend/README.md, Settings).
+      SETTINGS_TELEGRAM_DIR: "/data/telegram"
+      SETTINGS_MCP_GATEWAY_CONFIG: "/data/mcp-gateway/config.json"
+      # Docker-network address of the telegram-worker service (see its own
+      # service block below). backend-network is now internal, so the backend
+      # reaches api.telegram.org only by relaying through this proxy -- see
+      # TelegramClient.java and telegram-worker/server.py.
+      SETTINGS_TELEGRAM_API_BASE: "http://telegram-worker:8080"
+      SETTINGS_LLM_DIR: "/data/llm"
+      SETTINGS_LOCAL_LLM_DIR: "/data/local-llm"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      ANTHROPIC_MODEL: "${ANTHROPIC_MODEL:-claude-sonnet-5}"
+      LLM_BASE_URL: "${LLM_BASE_URL:-}"
+      LLM_API_KEY: "${LLM_API_KEY:-}"
+      LLM_MODEL: "${LLM_MODEL:-}"
+
+    volumes:
+      # Bind-mounted to ./data on the host (repo root) rather than
+      # Docker-managed named volumes, and deliberately the same host
+      # directory backend/src/main/resources/application.yml's local (no
+      # Docker) defaults resolve to -- one physical data/ directory no
+      # matter which way the backend is launched, instead of Docker's own
+      # internal volume storage holding a second, separate copy.
+      - ./data/derby:/data/derby
+      # Read-write here (files are staged out before a run), read-only on
+      # every worker (see e.g. subfinder-worker's own volumes: entry).
+      - ./data/project-storage:/data/project-storage
+      # Read-write: the wordlist browser lists this folder (see backend
+      # WordlistService), and the [ file ] menu's "Upload Wordlists" folder
+      # picker writes to it -- read-only on every worker (see e.g.
+      # subfinder-worker's own volumes: entry), same read-write-on-backend-
+      # only split as project-storage above.
+      - ./data/wordlists:/data/wordlists
+      # Read-write: the configs browser lists this folder (see backend
+      # ConfigsService), and the [ file ] menu's "Upload Configs" folder
+      # picker writes to it -- read-only on every worker whose tool accepts
+      # an external config file (see e.g. subfinder-worker's own volumes:
+      # entry), same read-write-on-backend-only split as wordlists above.
+      - ./data/configs:/data/configs
+      # Read-write: the [ file ] menu's "Upload Nuclei Templates" folder
+      # picker writes here (see backend NucleiTemplatesService); nuclei-worker
+      # mounts the same host folder read-write too (see its own volumes:
+      # entry below) so it can read back whatever gets dropped in from
+      # either side.
+      - ./data/nuclei-templates:/data/nuclei-templates
+      # Image storage (gowitness screenshots, see ImageFileService): one file per screenshot.
+      - ./data/image-storage:/data/image-storage
+      # Telegram bot settings, including the token. Only the backend touches this folder.
+      - ./data/telegram:/data/telegram
+      # MCP gateway config. The backend edits it from the Settings dialog; the gateway
+      # mounts the same folder read-only and reloads the file when it changes.
+      - ./data/mcp-gateway:/data/mcp-gateway
+      # Cloud-model toggle and API key for the chat agent (see LlmSettingsStore).
+      # Only the backend touches this folder.
+      - ./data/llm:/data/llm
+      # Local-model (LM Studio/Ollama/any other OpenAI-compatible server) toggle,
+      # base URL, API key and model id (see LocalLlmSettingsStore). Only the
+      # backend touches this folder.
+      - ./data/local-llm:/data/local-llm
+
+    networks:
+      - backend-network
+      - frontend-network
+      # Lets the backend's ElasticsearchIndexer and ElasticsearchQueryService reach the elasticsearch service.
+      # Reaches the MCP gateway for the chat agent.
+      - mcp-to-frontend-network
+      - elasticsearch-to-backend-network
+
+  ## Frontend service configuration
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+
+    image: freighter-framework-frontend:latest
+    container_name: freighter-framework-frontend
+
+    depends_on:
+      - backend
+      - elasticsearch
+
+    restart: unless-stopped
+
+    ports:
+      - "3000:3000"
+
+    environment:
+      BACKEND_URL: "http://backend:8080"
+      # Used only by the read-only /search-direct route in frontend/server.js. The browser never receives this URL
+      # or any Elasticsearch credential.
+      ELASTICSEARCH_URL: "http://elasticsearch:9200"
+      # Where the /manual route (header's Documentation window) reads MANUAL.md from -- see the bind mount below.
+      MANUAL_PATH: "/MANUAL.md"
+
+    volumes:
+      # MANUAL.md lives at the project root, outside this service's build
+      # context (./frontend), so it reaches the container only through this
+      # read-only bind mount rather than a COPY in frontend/Dockerfile.
+      - ./MANUAL.md:/MANUAL.md:ro
+
+    networks:
+      - frontend-network
+      - mcp-to-frontend-network
+      # Lets the frontend container reach Elasticsearch directly, for the /search-direct route.
+      - elasticsearch-to-frontend-network
+  
+  ## MCP Gateway: routes MCP job requests from the frontend to the MCP worker containers.
+  mcp-gateway:
+    build:
+      context: ./mcp-gateway
+      dockerfile: Dockerfile
+
+    image: freighter-framework-mcp-gateway:latest
+    container_name: mcp-gateway
+
+    networks:
+      - mcp-to-frontend-network
+      - mcp-to-workers-network
+      - mcp-gateway-network
+
+    depends_on:
+      - frontend
+
+    restart: unless-stopped
+
+    ports:
+      - "8811:8811"
+
+    environment:
+      MCP_GATEWAY_PORT: "8811"
+      MCP_GATEWAY_CONFIG: "/freighter-framework/data/config.json"
+
+    volumes:
+      - ./data/mcp-gateway:/freighter-framework/data:ro
+
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  ## Elasticsearch service configuration
+  elasticsearch:
+    build:
+      context: ./elastic-search
+      dockerfile: Dockerfile
+    image: freighter-framework-elasticsearch:latest
+    container_name: elasticsearch
+
+    networks:
+      - elasticsearch-to-backend-network
+      - elasticsearch-to-frontend-network
+
+    restart: unless-stopped
+
+    # No host port: both of its networks are internal, and Docker does not
+    # publish ports on internal networks. Only backend and frontend reach it.
+
+    # All of Elasticsearch's state lives under ./data/elasticsearch: the index
+    # (path.data) and its logs. The index is a derived copy of the Derby
+    # database, and IndexRetryScheduler re-indexes anything queued while this
+    # node is down. The root filesystem stays read-only; only these two paths
+    # and /tmp are writable.
+    volumes:
+      - ./data/elasticsearch/data:/usr/share/elasticsearch/data
+      - ./data/elasticsearch/logs:/usr/share/elasticsearch/logs
+
+    read_only: true
+    tmpfs:
+      # /tmp must be executable: Elasticsearch unpacks its JNA native library
+      # there and maps it. Docker mounts tmpfs noexec by default.
+      - /tmp:exec
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  ## Telegram proxy: the only container with a route to api.telegram.org.
+  ## The backend reaches it over backend-network, the same internal network it
+  ## uses to reach every other worker, and builds the request exactly as it
+  ## would send it to Telegram directly (see TelegramClient.java). This
+  ## container only relays it -- see telegram-worker/server.py.
+  telegram-worker:
+    build:
+      context: ./telegram-worker
+      dockerfile: Dockerfile
+    image: freighter-framework-telegram-worker:latest
+    container_name: telegram-job
+
+    networks:
+      - backend-network
+      - telegram-to-web-network
+
+    environment:
+      - TELEGRAM_WORKER_PORT=8080
+
+    # No host port publish: only the backend, over backend-network, reaches it.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+    restart: unless-stopped
+
+  ## Worker services for various tools
+  subfinder-worker:
+    build:
+      context: ./workers/subfinder-worker
+      dockerfile: Dockerfile
+      args:
+        TOOL_IMAGE: ${SUBFINDER_TOOL_IMAGE}
+    networks:
+      - backend-network
+      - mcp-to-workers-network
+      - workers-to-web-network
+    container_name: subfinder-job
+    environment:
+      - SUBFINDER_WORKER_PORT=8080
+    volumes:
+      - ./data/project-storage:/data/project-storage:ro
+      - ./data/wordlists:/data/wordlists:ro
+      - ./data/configs:/data/configs:ro
+    restart: unless-stopped
+
+  puredns-worker:
+    build:
+      context: ./workers/puredns-worker
+      dockerfile: Dockerfile
+      args:
+        TOOL_IMAGE: ${PUREDNS_TOOL_IMAGE}
+    networks:
+      - backend-network
+      - mcp-to-workers-network
+      - workers-to-web-network
+    container_name: puredns-job
+    environment:
+      - PUREDNS_WORKER_PORT=8080
+    volumes:
+      - ./data/project-storage:/data/project-storage:ro
+      - ./data/wordlists:/data/wordlists:ro
+    restart: unless-stopped
+
+  shuffledns-worker:
+    build:
+      context: ./workers/shuffledns-worker
+      dockerfile: Dockerfile
+      args:
+        TOOL_IMAGE: ${SHUFFLEDNS_TOOL_IMAGE}
+    networks:
+      - backend-network
+      - mcp-to-workers-network
+      - workers-to-web-network
+    container_name: shuffledns-job
+    environment:
+      - SHUFFLEDNS_WORKER_PORT=8080
+    volumes:
+      - ./data/project-storage:/data/project-storage:ro
+      - ./data/wordlists:/data/wordlists:ro
+    restart: unless-stopped
+
+  masscan-worker:
+    build:
+      context: ./workers/masscan-worker
+      dockerfile: Dockerfile
+      args:
+        TOOL_IMAGE: ${MASSCAN_TOOL_IMAGE}
+    networks:
+      - backend-network
+      - mcp-to-workers-network
+      - workers-to-web-network
+    container_name: masscan-job
+    environment:
+      - MASSCAN_WORKER_PORT=8080
+    volumes:
+      - ./data/project-storage:/data/project-storage:ro
+      - ./data/wordlists:/data/wordlists:ro
+      - ./data/configs:/data/configs:ro
+    # No host port publish -- see subfinder-worker's own comment above; same
+    # reasoning applies here. masscan needs raw socket access: the container
+    # drops every capability except the two raw-socket ones below. The process
+    # runs as non-root; the binary gets the capabilities via setcap.
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    restart: unless-stopped
+
+  # nmap-worker: persistent HTTP+WS worker (Go server wrapping the real nmap
+  # binary), same architecture as subfinder-worker -- see
+  # workers/nmap-worker/main.go and its Dockerfile's own header comment.
+  nmap-worker:
+    build:
+      context: ./workers/nmap-worker
+      dockerfile: Dockerfile
+      args:
+        TOOL_IMAGE: ${NMAP_TOOL_IMAGE}
+    networks:
+      - backend-network
+      - mcp-to-workers-network
+      - workers-to-web-network
+    container_name: nmap-job
+    environment:
+      - NMAP_WORKER_PORT=8080
+    # No host port publish -- see subfinder-worker's own comment above; same
+    # reasoning applies here. Raw-socket scans (-sS, -O) need NET_RAW/NET_ADMIN:
+    # every other capability is dropped; the process runs as non-root.
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    volumes:
+      - ./data/project-storage:/data/project-storage:ro
+      - ./data/wordlists:/data/wordlists:ro
+    restart: unless-stopped
+
+  # metasploit-worker: long-lived session worker. msfconsole starts on POST /run
+  # and keeps running until POST /stop; POST /input answers its prompts.
+  metasploit-worker:
+    build:
+      context: ./workers/metasploit-worker
+      dockerfile: Dockerfile
+      args:
+        TOOL_IMAGE: ${METASPLOIT_TOOL_IMAGE}
+    networks:
+      - backend-network
+      - mcp-to-workers-network
+      - workers-to-web-network
+    container_name: metasploit-job
+    environment:
+      - METASPLOIT_WORKER_PORT=8080
+    volumes:
+      - ./data/project-storage:/data/project-storage:ro
+      - ./data/wordlists:/data/wordlists:ro
+      - ./data/configs:/data/configs:ro
+    restart: unless-stopped
+
+  # dirsearch-worker: persistent HTTP+WS worker (Python stdlib server
+  # wrapping the real dirsearch tool), same architecture as subfinder-worker
+  # -- see workers/dirsearch-worker/server.py and its Dockerfile's own
+  # header comment.
+  dirsearch-worker:
+    build:
+      context: ./workers/dirsearch-worker
+      dockerfile: Dockerfile
+      args:
+        TOOL_IMAGE: ${DIRSEARCH_TOOL_IMAGE}
+    networks:
+      - backend-network
+      - mcp-to-workers-network
+      - workers-to-web-network
+    container_name: dirsearch-job
+    environment:
+      - DIRSEARCH_WORKER_PORT=8080
+    volumes:
+      - ./data/project-storage:/data/project-storage:ro
+      - ./data/wordlists:/data/wordlists:ro
+      - ./data/configs:/data/configs:ro
+    restart: unless-stopped
+
+  ffuf-worker:
+    build:
+      context: ./workers/ffuf-worker
+      dockerfile: Dockerfile
+      args:
+        TOOL_IMAGE: ${FFUF_TOOL_IMAGE}
+    networks:
+      - backend-network
+      - mcp-to-workers-network
+      - workers-to-web-network
+    container_name: ffuf-job
+    environment:
+      - FFUF_WORKER_PORT=8080
+    volumes:
+      - ./data/project-storage:/data/project-storage:ro
+      - ./data/wordlists:/data/wordlists:ro
+      - ./data/configs:/data/configs:ro
+    restart: unless-stopped
+
+  nuclei-worker:
+    build:
+      context: ./workers/nuclei-worker
+      dockerfile: Dockerfile
+      args:
+        TOOL_IMAGE: ${NUCLEI_TOOL_IMAGE}
+    networks:
+      - backend-network
+      - mcp-to-workers-network
+      - workers-to-web-network
+    container_name: nuclei-job
+    environment:
+      - NUCLEI_WORKER_PORT=8080
+    # nuclei-templates aren't baked into the image (see
+    # workers/nuclei-worker/Dockerfile) -- bind-mounted from the repo root's
+    # ./data/nuclei-templates (same one physical data/ directory every
+    # service here uses, see the backend service's own volumes: comment)
+    # rather than a Docker-managed named volume, so a user drops their own
+    # template collection straight into that host folder -- no `docker cp`
+    # or a throwaway container needed to populate it.
+    volumes:
+      - ./data/nuclei-templates:/home/worker/nuclei-templates
+      - ./data/project-storage:/data/project-storage:ro
+      - ./data/configs:/data/configs:ro
+    restart: unless-stopped
+
+  katana-worker:
+    build:
+      context: ./workers/katana-worker
+      dockerfile: Dockerfile
+      args:
+        TOOL_IMAGE: ${KATANA_TOOL_IMAGE}
+    networks:
+      - backend-network
+      - mcp-to-workers-network
+      - workers-to-web-network
+    container_name: katana-job
+    environment:
+      - KATANA_WORKER_PORT=8080
+    volumes:
+      - ./data/project-storage:/data/project-storage:ro
+      - ./data/wordlists:/data/wordlists:ro
+      - ./data/configs:/data/configs:ro
+    restart: unless-stopped
+
+  gau-worker:
+    build:
+      context: ./workers/gau-worker
+      dockerfile: Dockerfile
+      args:
+        TOOL_IMAGE: ${GAU_TOOL_IMAGE}
+    networks:
+      - backend-network
+      - mcp-to-workers-network
+      - workers-to-web-network
+    container_name: gau-job
+    environment:
+      - GAU_WORKER_PORT=8080
+    volumes:
+      - ./data/project-storage:/data/project-storage:ro
+      - ./data/wordlists:/data/wordlists:ro
+      - ./data/configs:/data/configs:ro
+    restart: unless-stopped
+
+  gitleaks-worker:
+    build:
+      context: ./workers/gitleaks-worker
+      dockerfile: Dockerfile
+      args:
+        TOOL_IMAGE: ${GITLEAKS_TOOL_IMAGE}
+    networks:
+      - backend-network
+      - mcp-to-workers-network
+      - workers-to-web-network
+    container_name: gitleaks-job
+    environment:
+      - GITLEAKS_WORKER_PORT=8080
+    volumes:
+      - ./data/project-storage:/data/project-storage:ro
+      - ./data/wordlists:/data/wordlists:ro
+      - ./data/configs:/data/configs:ro
+    restart: unless-stopped
+
+  gowitness-worker:
+    build:
+      context: ./workers/gowitness-worker
+      dockerfile: Dockerfile
+      args:
+        TOOL_IMAGE: ${GOWITNESS_TOOL_IMAGE}
+    networks:
+      - backend-network
+      - mcp-to-workers-network
+      - workers-to-web-network
+    container_name: gowitness-job
+    environment:
+      - GOWITNESS_WORKER_PORT=8080
+    volumes:
+      - ./data/project-storage:/data/project-storage:ro
+      - ./data/wordlists:/data/wordlists:ro
+    restart: unless-stopped
+
+  # xsstrike-worker: persistent HTTP+WS worker (Python stdlib server
+  # wrapping the real xsstrike CLI), same architecture as dirsearch-worker --
+  # see workers/xsstrike-worker/server.py and its Dockerfile's own header
+  # comment.
+  xsstrike-worker:
+    build:
+      context: ./workers/xsstrike-worker
+      dockerfile: Dockerfile
+      args:
+        TOOL_IMAGE: ${XSSTRIKE_TOOL_IMAGE}
+    networks:
+      - backend-network
+      - mcp-to-workers-network
+      - workers-to-web-network
+    container_name: xsstrike-job
+    environment:
+      - XSSTRIKE_WORKER_PORT=8080
+    volumes:
+      - ./data/project-storage:/data/project-storage:ro
+      - ./data/wordlists:/data/wordlists:ro
+    restart: unless-stopped
+
+  sqlmap-worker:
+    build:
+      context: ./workers/sqlmap-worker
+      dockerfile: Dockerfile
+      args:
+        TOOL_IMAGE: ${SQLMAP_TOOL_IMAGE}
+    networks:
+      - backend-network
+      - mcp-to-workers-network
+      - workers-to-web-network
+    container_name: sqlmap-job
+    environment:
+      - SQLMAP_WORKER_PORT=8080
+    volumes:
+      - ./data/project-storage:/data/project-storage:ro
+      - ./data/wordlists:/data/wordlists:ro
+      - ./data/configs:/data/configs:ro
+    restart: unless-stopped
+
+  sstimap-worker:
+    build:
+      context: ./workers/sstimap-worker
+      dockerfile: Dockerfile
+      args:
+        TOOL_IMAGE: ${SSTIMAP_TOOL_IMAGE}
+    networks:
+      - backend-network
+      - mcp-to-workers-network
+      - workers-to-web-network
+    container_name: sstimap-job
+    environment:
+      - SSTIMAP_WORKER_PORT=8080
+    volumes:
+      - ./data/project-storage:/data/project-storage:ro
+      - ./data/wordlists:/data/wordlists:ro
+      - ./data/configs:/data/configs:ro
+    restart: unless-stopped
+
+  # nosqlmap-worker: long-lived session worker, same shape as metasploit-worker.
+  nosqlmap-worker:
+    build:
+      context: ./workers/nosqlmap-worker
+      dockerfile: Dockerfile
+      args:
+        TOOL_IMAGE: ${NOSQLMAP_TOOL_IMAGE}
+    networks:
+      - backend-network
+      - mcp-to-workers-network
+      - workers-to-web-network
+    container_name: nosqlmap-job
+    environment:
+      - NOSQLMAP_WORKER_PORT=8080
+    volumes:
+      - ./data/project-storage:/data/project-storage:ro
+      - ./data/wordlists:/data/wordlists:ro
+    restart: unless-stopped
+
+  fuxploider-worker:
+    build:
+      context: ./workers/fuxploider-worker
+      dockerfile: Dockerfile
+      args:
+        TOOL_IMAGE: ${FUXPLOIDER_TOOL_IMAGE}
+    networks:
+      - backend-network
+      - mcp-to-workers-network
+      - workers-to-web-network
+    container_name: fuxploider-job
+    environment:
+      - FUXPLOIDER_WORKER_PORT=8080
+    volumes:
+      - ./data/project-storage:/data/project-storage:ro
+      - ./data/wordlists:/data/wordlists:ro
+    restart: unless-stopped
+
+  wafw00f-worker:
+    build:
+      context: ./workers/wafw00f-worker
+      dockerfile: Dockerfile
+      args:
+        TOOL_IMAGE: ${WAFW00F_TOOL_IMAGE}
+    networks:
+      - backend-network
+      - mcp-to-workers-network
+      - workers-to-web-network
+    container_name: wafw00f-job
+    environment:
+      - WAFW00F_WORKER_PORT=8080
+    volumes:
+      - ./data/project-storage:/data/project-storage:ro
+      - ./data/wordlists:/data/wordlists:ro
+    restart: unless-stopped
+
+  # jwt-tool-worker: container/service name stays hyphenated ("jwt-tool") to
+  # match the backend's own routes/worker id, even though the backend's Java
+  # package is named without one (jwttool) -- see
+  # backend/.../workercontrollers/jwttool/JwttoolWorkerClient.java.
+  jwt-tool-worker:
+    build:
+      context: ./workers/jwt-tool-worker
+      dockerfile: Dockerfile
+      args:
+        TOOL_IMAGE: ${JWT_TOOL_TOOL_IMAGE}
+    networks:
+      - backend-network
+      - mcp-to-workers-network
+      - workers-to-web-network
+    container_name: jwt-tool-job
+    environment:
+      - JWT_TOOL_WORKER_PORT=8080
+    volumes:
+      - ./data/project-storage:/data/project-storage:ro
+      - ./data/wordlists:/data/wordlists:ro
+    restart: unless-stopped
+
+  # hydra-worker: persistent HTTP+WS worker (Go server wrapping the real,
+  # native-C hydra binary), same architecture as nmap-worker -- see
+  # workers/hydra-worker/main.go's own header comment for why a Go wrapper
+  # was chosen over a hand-rolled C HTTP+WS server.
+  hydra-worker:
+    build:
+      context: ./workers/hydra-worker
+      dockerfile: Dockerfile
+      args:
+        TOOL_IMAGE: ${HYDRA_TOOL_IMAGE}
+    networks:
+      - backend-network
+      - mcp-to-workers-network
+      - workers-to-web-network
+    container_name: hydra-job
+    environment:
+      - HYDRA_WORKER_PORT=8080
+    # Needed: -L/-P (login/password list) are isFile flags in
+    # hydra-panel.js/HydraFlags, resolved through ProjectFileStager.
+    volumes:
+      - ./data/project-storage:/data/project-storage:ro
+      - ./data/wordlists:/data/wordlists:ro
+    restart: unless-stopped
+
+  # wpscan-worker: persistent HTTP+WS worker (Go server wrapping the real
+  # wpscan Ruby gem), same architecture as nmap-worker -- see
+  # workers/wpscan-worker/main.go's own header comment for why a Go wrapper
+  # was chosen over a hand-rolled Ruby HTTP+WS server, and its Dockerfile's
+  # own header comment for the two-stage Go+Ruby build.
+  wpscan-worker:
+    build:
+      context: ./workers/wpscan-worker
+      dockerfile: Dockerfile
+      args:
+        TOOL_IMAGE: ${WPSCAN_TOOL_IMAGE}
+    networks:
+      - backend-network
+      - mcp-to-workers-network
+      - workers-to-web-network
+    container_name: wpscan-job
+    environment:
+      - WPSCAN_WORKER_PORT=8080
+    # Needed: -P/--passwords is an isFile flag in wpscan-panel.js/WpscanFlags
+    # (resolved through ProjectFileStager); -o/--output and --cookie-jar are
+    # isOutput flags staged back into Project Folder after a run finishes
+    # (see WorkerOutputStager) -- both read and write go through this same
+    # :ro project-storage mount plus the backend's own rw path, same as
+    # every other worker here.
+    volumes:
+      - ./data/project-storage:/data/project-storage:ro
+      - ./data/wordlists:/data/wordlists:ro
+    restart: unless-stopped
+
+networks:
+  backend-network:
+    name: main-backend-network
+    # Internal: backend<->worker RPC never needs to leave this host. Workers
+    # get their own internet egress from workers-to-web-network below.
+    internal: true
+  frontend-network:
+    name: sec-frontend-network
+  mcp-to-frontend-network:
+    name: third-mcp-to-frontend-network
+    internal: true
+  mcp-to-workers-network:
+    name: fourth-mcp-to-workers-network
+    # Internal: mcp-gateway<->worker RPC never needs to leave this host either.
+    internal: true
+  mcp-gateway-network:
+    name: fifth-mcp-gateway-network
+    internal: true
+  elasticsearch-to-backend-network:
+    name: sixth-elasticsearch-to-backend-network
+    internal: true
+  elasticsearch-to-frontend-network:
+    name: seventh-elasticsearch-to-frontend-network
+    internal: true
+  workers-to-web-network:
+    name: eighth-workers-to-web-network
+    # Not internal: this is the workers' one dedicated route to the internet,
+    # for scanning real targets. Attached to workers only -- never to backend
+    # or mcp-gateway, which reach workers over the two internal networks above.
+  telegram-to-web-network:
+    name: ninth-telegram-to-web-network
+    # Not internal: the telegram-worker's dedicated route to api.telegram.org.
+    # Attached only to telegram-worker (see its service block) -- the backend
+    # itself has no network with internet access other than frontend-network,
+    # which it uses only for LLM provider calls.
+
+# No top-level named volumes: derby data, project-storage, nuclei-templates,
+# and image-storage are all bind-mounted from the repo root's own ./data
+# directory instead (see the backend service's volumes: entry above for the
+# full rationale) -- one real, inspectable directory on the host rather than
+# Docker-managed volume storage, and the same directory local (non-Docker)
+# `mvn` runs use too (see backend/src/main/resources/application.yml).

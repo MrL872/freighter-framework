@@ -1,0 +1,42 @@
+# Git
+.git/
+.gitignore
+.gitattributes
+.github
+
+# Build output
+target/
+build/
+.gradle/
+out/
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+.project
+.classpath
+.settings/
+
+# Runtime data
+data/
+derby-data/
+logs/
+application-logs/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+secrets/
+credentials/
+*.key
+*.pem
+*.p12
+*.jks
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+.DS_Store

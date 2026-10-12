@@ -1,0 +1,33 @@
+# Single-node Elasticsearch, internal-only. It is not publicly exposed, and the
+# frontend is not given Elasticsearch credentials or unrestricted access.
+#
+# This node is reachable only from the two private, user-defined Docker
+# networks declared in docker-compose.yml (sixth-elasticsearch-to-backend-network,
+# seventh-elasticsearch-to-frontend-network) -- it is never published beyond
+# the host's 9200 mapping used for local operator access. Given that
+# boundary, and that nothing outside those two trusted containers can reach
+# this node, X-Pack security (TLS + auth) is left disabled rather than
+# juggling self-signed certs and embedded credentials inside a read-only,
+# non-root container. If this node is ever exposed beyond those two networks, security
+# must be re-enabled first.
+cluster.name: freighter-cluster
+node.name: freighter-es-node-1
+
+# Single-node: no clustering/discovery needed.
+discovery.type: single-node
+
+# Bind-mounted from ./data/elasticsearch by docker-compose.yml. The index is a
+# derived, rebuildable copy; the authoritative store is the backend's Derby
+# database.
+path.data: /usr/share/elasticsearch/data
+path.logs: /usr/share/elasticsearch/logs
+
+network.host: 0.0.0.0
+http.port: 9200
+transport.port: 9300
+
+xpack.security.enabled: false
+xpack.security.http.ssl.enabled: false
+xpack.security.transport.ssl.enabled: false
+xpack.ml.enabled: false
+

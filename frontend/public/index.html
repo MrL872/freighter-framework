@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="static/base.css">
+<link rel="icon" type="image/png" href="icons/icons8-box-32.png">
+<title>Overview</title>
+</head>
+<body>
+<!--
+  This shell only declares mount points. Every panel below is an
+  independently loadable component composed by js/index.js — nothing here
+  is rendered until that component's module resolves. See js/index.js for
+  the composition root and component contract.
+-->
+<header>
+  <div class="header-left">
+    <img class="logo" src="icons/icons8-box-26.png" alt="freighter-framework">
+    <div data-component="menu"></div>
+  </div>
+  <div data-component="search"></div>
+  <div class="header-right">
+    <div data-component="profile"></div>
+    <span class="menu-sep" aria-hidden="true">//</span>
+    <div data-component="chat-toggle"></div>
+  </div>
+  <button type="button" class="icon-btn hamburger-btn" id="header-hamburger" aria-haspopup="true" aria-expanded="false" aria-label="Menu">
+    <span aria-hidden="true">[</span> &#9776; <span aria-hidden="true">]</span>
+  </button>
+</header>
+
+<div class="layout">
+  <div class="content">
+    <!-- Reserves the links sidebar's collapsed-rail width in normal flow, so
+         that default (collapsed) state does not overlay main. Only the
+         sidebar's own expansion beyond this rail overlays main — see
+         static/links.css. -->
+    <div class="links-rail" aria-hidden="true"></div>
+
+    <main>
+      <section class="metrics" aria-label="Metrics">
+        <div data-component="metric-backend"></div>
+        <div data-component="metric-services"></div>
+        <div data-component="metric-severity"></div>
+        <div data-component="metric-totals"></div>
+      </section>
+      <section class="ledger" data-component="ledger" aria-label="Vulnerability ledger"></section>
+    </main>
+
+    <!-- The chat sidebar always overlays main; the links sidebar overlays
+         main only while expanded (see static/links.css). -->
+    <aside id="links-sidebar" aria-label="Links"></aside>
+    <aside id="chat-sidebar" aria-label="AI chat" aria-hidden="true" inert></aside>
+  </div>
+
+  <footer><div class="footer-text">freighter-framework &middot; overview panel &middot; last refreshed <span id="refreshed-at">-</span> <span class="cursor" aria-hidden="true"></span></div></footer>
+</div>
+
+<script type="module" src="js/index.js"></script>
+</body>
+</html>

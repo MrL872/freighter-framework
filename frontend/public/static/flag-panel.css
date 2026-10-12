@@ -1,0 +1,128 @@
+/* Shared control-panel styling: flag sections/buttons/popups inside the
+   .flag-group-body layout from worker-view.css. Every worker_components/
+   *-panel.js control panel (subfinder, shuffledns, dirsearch, nmap, gau,
+   gitleaks, nuclei, ffuf, metasploit, gowitness, katana, ...) loads this
+   file, not just subfinder's — hence the generic name. */
+/* metasploit-panel.js's one-off reminder that the real work happens in the
+   live terminal's input box, not this button bar -- see that file's own
+   header comment. */
+.flag-note { padding: 8px 12px 0; color: var(--muted); font-size: 0.72rem; line-height: 1.4; }
+.flag-section { padding: 4px 12px 10px; }
+.flag-section-title {
+  margin: 6px 0 6px; padding: 0; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.7rem; font-weight: 400;
+}
+.flag-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.flag-btn-wrap { position: relative; display: inline-flex; }
+.flag-btn {
+  background: transparent; border: 1px solid var(--border); color: var(--muted);
+  padding: 3px 8px; font-family: inherit; font-size: 0.75rem; cursor: pointer;
+}
+.flag-btn:hover { border-color: var(--ok); color: var(--ok); }
+.flag-btn.active, .flag-btn[aria-pressed="true"] { border-color: var(--ok); color: var(--ok); background: #1f1f1f; }
+
+/* Inline value popup for a value-taking flag: anchored just to the right of
+   its button, Enter commits, Escape cancels (see openValuePopup() in each
+   worker_components/*-panel.js). The input sits inside a wrapper box rather
+   than being the popup itself, so an output-writing flag (see isOutput on
+   the flag definition) can grow the same box downward with a one-line hint
+   pointing at Project Folder instead of a blind typed path.
+   position: fixed (not absolute) and a high z-index because openValuePopup
+   appends this to <body> at a computed viewport position rather than
+   inside .flag-btn-wrap — nested overflow:hidden/auto ancestors
+   (.flag-group-body, the scrollable .control-body) would otherwise clip or
+   bury it before it ever reaches the rest of the page. */
+.flag-value-popup-wrap {
+  position: fixed; z-index: 1000;
+  background: var(--panel); color: var(--text); border: 2px solid #fff;
+  font-family: inherit; font-size: 0.75rem; width: 130px;
+}
+.flag-value-popup {
+  display: block; width: 100%; box-sizing: border-box;
+  background: transparent; color: var(--text); border: 0;
+  font: inherit; padding: 3px 6px;
+}
+.flag-value-popup:focus-visible { outline: 0; }
+.flag-value-hint {
+  padding: 4px 6px; border-top: 1px dashed var(--border);
+  color: var(--muted); font-size: 0.68rem; line-height: 1.3;
+}
+.flag-value-suggest {
+  background: transparent; border: 0; padding: 0; margin: 0;
+  color: var(--ok); font: inherit; text-decoration: underline; cursor: pointer;
+}
+.flag-value-suggest:hover { color: var(--accent); }
+
+/* Expandable Project Folder file list for a file-taking flag (-dL, -rL,
+   -config, -pc, ...) — anchored below its button rather than to the side,
+   since a list needs more room than a single-line value popup (see
+   openFilePopup() in each worker_components/*-panel.js). Same fixed/portal
+   treatment as .flag-value-popup-wrap above, and for the same reason. */
+.flag-file-popup {
+  position: fixed; z-index: 1000;
+  min-width: 180px; max-width: 260px; max-height: 220px; overflow-y: auto;
+  background: var(--panel); border: 2px solid #fff;
+}
+.flag-file-status { padding: 8px 10px; color: var(--muted); font-size: 0.75rem; }
+.flag-file-option {
+  display: block; width: 100%; text-align: left; background: transparent; border: 0;
+  color: var(--text); font-family: inherit; font-size: 0.75rem; padding: 6px 10px; cursor: pointer;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.flag-file-option:hover { background: #1f1f1f; color: var(--ok); }
+
+/* Wordlist browser window (js/wordlistBrowser.js), opened from the Browse wordlists... option
+   at the bottom of every file popup. A modal over the page, styled like the settings dialog. */
+.wordlist-overlay {
+  position: fixed; inset: 0; z-index: 1100;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.wordlist-window {
+  width: min(560px, 100%); max-height: 80vh;
+  display: flex; flex-direction: column;
+  background: var(--panel); border: 2px solid #fff; font-size: 0.75rem;
+}
+.wordlist-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+.wordlist-title { color: var(--ok); }
+.wordlist-path { padding: 6px 10px; color: var(--muted); border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.wordlist-list { flex: 1; overflow-y: auto; min-height: 160px; }
+.wordlist-row {
+  display: flex; justify-content: space-between; gap: 12px; width: 100%;
+  background: transparent; border: 0; color: var(--text); font-family: inherit; font-size: inherit;
+  padding: 6px 10px; cursor: pointer; text-align: left;
+}
+.wordlist-row:hover { background: #1f1f1f; color: var(--ok); }
+.wordlist-dir .wordlist-name { color: var(--ok); }
+.wordlist-size { color: var(--muted); flex: none; }
+.wordlist-status { padding: 6px 10px; color: var(--muted); }
+.wordlist-foot { display: flex; justify-content: flex-end; padding: 8px 10px; border-top: 1px solid var(--border); }
+.wordlist-window button:not(.wordlist-row) { background: transparent; border: 1px solid var(--border); color: var(--text); font-family: inherit; font-size: inherit; padding: 2px 8px; cursor: pointer; }
+.wordlist-window button:not(.wordlist-row):hover, .wordlist-window button:not(.wordlist-row):focus-visible { color: var(--ok); border-color: var(--ok); }
+.wordlist-window button:disabled { opacity: 0.5; cursor: not-allowed; }
+.flag-file-browse { border-top: 1px solid var(--border); color: var(--ok); }
+
+/* Search box in the panel head (see flagSearch.js). The head is uppercase and a
+   drag handle, so the box resets both and keeps its own text selectable. */
+/* The head lays its title and the search box out in a row, the box at the right edge. */
+.worker-grid .panel-head:has(> .flag-search) { display: flex; align-items: center; gap: 10px; }
+.worker-grid .panel-head .flag-search {
+  margin-left: auto; width: 170px; max-width: 45%; flex: none;
+  background: transparent; color: var(--text); border: 1px solid var(--border);
+  padding: 2px 6px; font: inherit; font-size: 0.75rem; letter-spacing: normal;
+  text-transform: none; cursor: text; user-select: text;
+}
+.worker-grid .panel-head .flag-search:focus { outline: 0; border-color: var(--ok); }
+
+/* Output popups (see outputDestination.js): a one-option destination dropdown above
+   the name input, and a refusal message below it. */
+.flag-value-dest {
+  display: block; width: 100%; box-sizing: border-box; background: #1a1a1a; color: var(--text);
+  border: 0; border-bottom: 1px dashed var(--border); font: inherit; font-size: 0.72rem; padding: 3px 6px;
+}
+.flag-value-error {
+  padding: 4px 6px; border-top: 1px dashed var(--border); color: var(--danger, #e06c75); font-size: 0.68rem; line-height: 1.3;
+}
+
+/* A flag the picked scan command does not take (see gowitness-panel.js's renderCommand). */
+.flag-btn-wrap.cmd-na { display: none !important; }

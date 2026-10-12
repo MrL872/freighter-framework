@@ -1,0 +1,93 @@
+# Java / Maven (backend)
+backend/target/
+*.class
+*.jar
+!backend/src/**/resources/*.jar
+
+# Node (frontend)
+frontend/node_modules/
+frontend/dist/
+
+# Python bytecode (Python workers)
+__pycache__/
+
+# Go build output (workers and mcp-gateway)
+*.exe
+*.test
+*.out
+
+# Runtime data: keep the folders, ignore what gets generated in them
+data/derby/
+data/project-storage/*
+!data/project-storage/README.md
+data/image-storage/*
+!data/image-storage/README.md
+
+# Shared wordlists: your own files, not committed. The folder stays in git via README.md.
+data/wordlists/*
+!data/wordlists/README.md
+data/nuclei-templates/*
+!data/nuclei-templates/README.md
+
+# Shared external configs (sqlmap.conf, nuclei config.yaml, ...): your own files, not committed.
+data/configs/*
+!data/configs/.gitkeep
+
+# Telegram bot token and chats: never commit the settings file
+data/telegram/*
+!data/telegram/README.md
+
+# Chat agent cloud-model toggle and API key: never commit the settings file
+data/llm/*
+!data/llm/README.md
+data/local-llm/*
+!data/local-llm/README.md
+
+# Elasticsearch index and logs: generated at runtime
+data/elasticsearch/*
+!data/elasticsearch/README.md
+
+# Local offline image cache (see `make save-images`/`load-images` in the
+# Makefile): per-machine docker save tarballs, never committed -- large
+# binaries that are also meaningless outside the exact machine that made
+# them (image platform/arch, whatever TOOL_IMAGE tags that machine had set).
+data/docker-image-cache/*
+!data/docker-image-cache/README.md
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.jks
+secrets/
+credentials/
+
+# Logs
+logs/
+*.log
+
+# IDE and OS files
+.idea/
+.vscode/
+*.iml
+.project
+.classpath
+.settings/
+.DS_Store
+Thumbs.db
+
+# .github/ stays untracked (workflows, worker_instructions/ scratch notes),
+# except FUNDING.yml -- GitHub only reads it when it's actually committed.
+.github/*
+!.github/FUNDING.yml
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+
+# Working notes and scratch output from automated review passes (not part of the release)
+.agent-scratch/

@@ -1,0 +1,50 @@
+# Generated from a manifest check of every worker's TOOL_IMAGE.
+# These images publish only linux/arm64 builds, so on an amd64 host they
+# run under emulation. Every other worker's image has an amd64 build and
+# runs natively, so it is not listed here.
+#
+# Re-check after changing a TOOL_IMAGE line:
+#   docker manifest inspect -v <image> | findstr architecture
+# Remove a service entry once its image publishes amd64.
+
+services:
+  subfinder-worker:
+    platform: linux/amd64
+  shuffledns-worker:
+    platform: linux/amd64
+  masscan-worker:
+    platform: linux/amd64
+  nmap-worker:
+    platform: linux/amd64
+  metasploit-worker:
+    platform: linux/amd64
+  dirsearch-worker:
+    platform: linux/amd64
+  ffuf-worker:
+    platform: linux/amd64
+  nuclei-worker:
+    platform: linux/amd64
+  katana-worker:
+    platform: linux/amd64
+  gau-worker:
+    platform: linux/amd64
+  xsstrike-worker:
+    platform: linux/amd64
+  sqlmap-worker:
+    platform: linux/amd64
+  sstimap-worker:
+    platform: linux/amd64
+  nosqlmap-worker:
+    platform: linux/amd64
+  wafw00f-worker:
+    platform: linux/amd64
+  jwt-tool-worker:
+    platform: linux/amd64
+  hydra-worker:
+    platform: linux/amd64
+  wpscan-worker:
+    platform: linux/amd64
+  gitleaks-worker:
+    platform: linux/amd64
+  gowitness-worker:
+    platform: linux/amd64

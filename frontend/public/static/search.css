@@ -1,0 +1,84 @@
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 0 10px;
+  height: 32px;
+}
+.search:focus-within { border-color: var(--ok); }
+.search .prompt { color: var(--ok); flex: none; }
+.search input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  color: var(--text);
+  font: inherit;
+  caret-color: var(--ok);
+}
+.search input::placeholder { color: var(--muted); }
+.search kbd { color: var(--muted); border: 1px solid var(--border); padding: 0 5px; font-size: 0.7rem; flex: none; }
+@media (max-width: 720px) { .search kbd { display: none; } }
+
+.search-filters-toggle {
+  flex: none;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+.search-filters-toggle[aria-expanded="true"] { color: var(--ok); border-color: var(--ok); }
+.search-filters[hidden] { display: none; }
+/* Floats under the toggle button (see positionFiltersPanel() in search.js)
+   instead of sitting in normal flow -- it hovers over whatever's beneath it
+   (the page header, the ledger below), so opening it never changes that
+   content's own size/position. position: fixed rather than absolute so it's
+   immune to any ancestor's own overflow/clipping. */
+.search-filters {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 220px;
+  max-width: calc(100vw - 24px);
+  background: var(--panel);
+  border: 1px solid var(--ok);
+  padding: 8px;
+}
+.search-filters input,
+.search-filters select {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  height: 28px;
+  padding: 0 8px;
+}
+/* Fade and slide in when opened. The animation runs each time the panel goes
+   from hidden to visible. Closing plays the reverse first (search.js hides
+   it only once that finishes). */
+@keyframes search-filters-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: none; }
+}
+.search-filters:not([hidden]) { animation: search-filters-in 0.35s ease-out both; }
+@keyframes search-filters-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(-8px); }
+}
+.search-filters.is-closing:not([hidden]) { animation: search-filters-out 0.25s ease-in both; }
+@media (prefers-reduced-motion: reduce) {
+  .search-filters:not([hidden]), .search-filters.is-closing:not([hidden]) { animation: none; }
+}

@@ -1,0 +1,245 @@
+.ledger { min-height: 0; margin: 12px 16px; display: flex; flex-direction: column; border: 3px double var(--muted); background: var(--panel); }
+/* nowrap: the header's height must never change (not even a second line)
+   regardless of what's inside it -- the column filter popup and the
+   search-filters dropdown are both position: fixed/absolute so they
+   already can't affect it. No overflow-x here (that would also clip the
+   column filter popup below, which deliberately renders outside this
+   box's own bounds -- see placeFilterUnder() in ledger.js); the title and
+   right-side group shrink/truncate instead of forcing a scrollbar. */
+.ledger-head { position: relative; flex: none; display: flex; flex-wrap: nowrap; align-items: center; justify-content: space-between; gap: 12px; height: 40px; box-sizing: border-box; padding: 6px 12px; border-bottom: 1px solid var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.8rem; }
+.ledger-head > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Column filter panel, shown under the ledger header (see ledger.js). */
+.ledger-head .col-menu { max-height: 320px; }
+.col-menu-title { padding: 6px 12px; color: var(--ok); border-bottom: 1px solid var(--border); }
+.ledger-head .co { color: var(--ok); }
+/* Total count + bulk actions, grouped so they sit together at the header's
+   right edge instead of justify-content: space-between spacing them apart
+   from each other too. */
+.ledger-head-right { flex: none; display: flex; align-items: center; gap: 12px; }
+.ledger-head-right .tot { color: var(--muted); white-space: nowrap; }
+.ledger-head #ledger-degraded { color: var(--warn, #c77); }
+/* The header is its own table in its own non-scrolling element -- not a
+   position: sticky row inside .ledger-scroll -- so it can never be part of
+   what the scrollbar there represents. paddingRight is set in JS
+   (syncHeadGutter() in ledger.js) to match .ledger-scroll's own vertical
+   scrollbar width, so the header table's columns -- width: 100% of this
+   box's own (now narrower) content box -- line up with the body table's
+   columns exactly instead of drifting by a scrollbar's width. */
+.ledger-table-head { flex: none; overflow: hidden; }
+.ledger-scroll { flex: 1; min-height: 0; overflow: auto; }
+/* table-layout: fixed lets the <colgroup> widths (set/updated in JS) be the
+   single source of truth for column sizing, including while dragging; the
+   table always fills exactly the ledger box, never wider. */
+.ledger table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.ledger th { position: relative; text-align: left; font-weight: 400; padding: 0; border-bottom: 3px double var(--muted); border-right: 1px solid var(--border); white-space: nowrap; background: #1a1a1a; }
+.ledger th:last-child { border-right: 0; }
+.ledger td { padding: 0 12px; height: 32px; border-bottom: 1px dashed var(--border); border-right: 1px solid var(--border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ledger td:last-child { border-right: 0; }
+
+.ledger td.col-select, .ledger th.col-select { text-align: center; padding: 0; }
+.ledger tr.empty td { color: var(--muted); text-align: center; letter-spacing: 0.08em; }
+/* A row opens the vulnerability card on click (see ledger.js) -- the
+   checkbox and a Path link are their own separate click targets instead,
+   but a pointer cursor suits all three the same way. */
+.ledger tbody tr:not(.empty):hover td { background: rgba(255, 255, 255, 0.04); cursor: pointer; }
+.ledger td.sev.critical { color: var(--ok); font-weight: 700; }
+.ledger td.sev.n-a, .ledger td.sev.false-positive { color: var(--muted); font-style: italic; }
+
+/* Bulk actions: live inside .ledger-head-right (see ledger.js), to the right
+   of the total count, shown once a row checkbox is ticked (see ledger.js's
+   updateBulkBar) and hidden the rest of the time. Buttons are taller than
+   the plain title text next to them, so simply display:none-ing this when
+   empty (the native [hidden] default) let the header grow/shrink every
+   time a selection was made -- the same "stretch" this layout was supposed
+   to rule out. Same visibility + pointer-events pattern as the [ view ]
+   menu/profile dropdowns (see menu.css/profile.css): the hidden state stays
+   in layout (own width and height still reserved) but invisible and
+   non-interactive, so .ledger-head's height is identical either way --
+   never shrunk to fit, per the button sizing staying untouched. */
+.ledger-bulk { flex: none; display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; font-size: 0.8rem; }
+/* width: 0 (not just visibility) so the hidden state still contributes its
+   full natural height to the header row's cross-axis sizing -- that's the
+   part that must stay constant -- without also reserving its full button
+   row's width, which would leave a permanent gap before the total count
+   even with nothing selected. */
+.ledger-bulk[hidden] { display: flex; visibility: hidden; pointer-events: none; width: 0; overflow: hidden; }
+.ledger-bulk #ledger-bulk-count { color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap; }
+/* Doubles as vuln-card.js's statusMsg does -- the delete confirm/"Deleting…"
+   text as well as an actual failure. It used to get its own full-width row
+   to wrap onto; inline in the header there's no row to spare, so it's
+   capped and truncated instead -- the title attribute (set alongside every
+   textContent assignment in ledger.js) carries the full text as a hover
+   tooltip when it's cut off. */
+.ledger-bulk #ledger-bulk-error { color: var(--warn, #c77); max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Same transparent/bordered button as everywhere else in the app (see
+   .vuln-card-status-btn, .pf-action, .terminal-control button) -- plain
+   native <button> chrome doesn't follow this app's --bg/--text theme
+   variables or the [ view ] menu's invert(1) light-theme toggle, so it
+   reads as a flat gray box regardless of theme instead of matching the
+   bracket-styled, monochrome look everything else here has. */
+.ledger-bulk button {
+  background: transparent; border: 1px solid var(--border); color: var(--muted);
+  font: inherit; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em;
+  padding: 4px 10px; cursor: pointer;
+}
+.ledger-bulk button:hover:not(:disabled), .ledger-bulk button:focus-visible:not(:disabled) { color: var(--ok); border-color: var(--ok); }
+.ledger-bulk button:disabled { opacity: 0.5; cursor: not-allowed; }
+/* Delete is destructive -- marked apart from the status buttons in --bad
+   instead of --muted/--ok. No background fill on hover/focus (an earlier
+   version of this rule had one): this app's dark theme has every semantic
+   color, including --bad, set to plain white (see base.css), so filling
+   the background turned the button into a solid white block for as long
+   as the mouse sits over it, which is exactly when its label becomes
+   "Click again to confirm delete" -- unreadable right when it matters
+   most. This still needs its own hover/focus rule, though -- without one,
+   the generic ".ledger-bulk button:hover" rule above would turn it --ok
+   (green-ish/positive) on hover, wrong for a destructive action. */
+.ledger-bulk-delete-btn { color: var(--bad, #c77); border-color: var(--bad, #c77); }
+.ledger-bulk-delete-btn:hover:not(:disabled), .ledger-bulk-delete-btn:focus-visible:not(:disabled) { color: var(--bad, #c77); border-color: var(--bad, #c77); }
+
+/* Path column: a full discovered URL is a real link (see ledger.js's
+   buildRow) -- it still truncates like any other cell (the column's own
+   overflow:hidden/text-overflow:ellipsis from the generic `.ledger td` rule
+   above, not special-cased here), it just underlines on hover to read as
+   clickable. */
+.ledger td.col-path a.path-link:hover { text-decoration: underline; }
+
+/* Fixed, unadjustable checkbox column. Reuses the app's "[ label ]" bracket
+   button convention (see .icon-btn in base.css) instead of a native
+   checkbox, so it's a plain clickable button showing literal "[ ]" / "[x]"
+   text — no appearance-reset trickery to fight the browser over. */
+.select-box {
+  display: block;
+  margin: 0 auto;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: inherit;
+  cursor: pointer;
+}
+.select-box:hover, .select-box[aria-pressed="true"] { color: var(--ok); }
+
+/* Column name box: the header cell's whole draggable surface (see
+   th[draggable] below) — everything in it except the ">_" trigger button,
+   which opts itself out of dragging (col-toggle below) so a click there
+   never fights with the drag-and-drop reordering the rest of the box
+   starts. */
+.col-head {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  padding: 6px 12px;
+  overflow: hidden;
+}
+.col-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Column filter trigger ("&gt;") — a small button nested in .col-head, not
+   itself draggable, so it can be clicked to open the value-filter menu
+   without starting a column-reorder drag. */
+.col-toggle {
+  display: inline-flex;
+  flex: none;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: inherit;
+  /* Invisible buffer zone around the button, so a click/drag started just
+     off its visible glyph doesn't land ambiguously between it (open the
+     filter menu, not draggable — see ledger.js) and the surrounding
+     .col-head, which is the actual column-reorder drag surface. The
+     negative margin offsets the added padding so the visible glyph and its
+     spacing to the label stay where they were. */
+  margin: -4px 6px -4px -4px;
+  padding: 4px;
+  cursor: pointer;
+}
+.col-toggle .chevron { display: inline-block; font-size: 1.5em; line-height: 1.25; color: var(--ok); transform: rotate(0deg); transition: transform 0.15s ease; }
+.col-toggle:hover, .col-toggle[aria-expanded="true"] { color: var(--ok); }
+.col-toggle:hover .chevron, .col-toggle[aria-expanded="true"] .chevron { color: var(--ok); }
+/* Rotates only while its filter is open, i.e. after a click, not on hover. */
+.col-toggle[aria-expanded="true"] .chevron { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) {
+  .col-toggle .chevron { transition: none; }
+}
+.col-menu {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  z-index: 10;
+  min-width: 180px;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--ok);
+  padding: 4px 0;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.85rem;
+}
+.col-menu label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.col-menu label:hover { background: #1f1f1f; color: var(--ok); }
+.col-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.col-menu button:hover { background: #1f1f1f; color: var(--ok); }
+.col-menu-empty { padding: 6px 12px; color: var(--muted); }
+
+/* Drag-to-resize handle on the trailing edge of resizable header cells. The
+   handle itself is a wide invisible hit target; its thin center line is
+   always visible so the column boundary reads clearly without hovering. */
+.col-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 7px;
+  height: 100%;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 2;
+}
+.col-resize-handle::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  background: var(--border);
+}
+.col-resize-handle:hover::after, .col-resize-handle:active::after { background: var(--ok); width: 2px; left: 2.5px; }
+
+/* Column drag-and-drop reordering (see makeSortable() in ledger.js) — same
+   principle as the links sidebar, just horizontal. */
+.ledger th[draggable="true"] { cursor: grab; }
+.ledger th[draggable="true"] .col-toggle { cursor: pointer; }
+.ledger th.dragging { opacity: 0.4; }
+@media (prefers-reduced-motion: reduce) {
+  .ledger th { transition: none !important; }
+}
+
+/* Phones (the app's 640px breakpoint): just a tighter gap -- the
+   search-filters dropdown (search.css) and column filter popup both float
+   on their own and already clamp to the viewport width independently of
+   this header. */
+@media (max-width: 640px) {
+  .ledger-head { gap: 8px; }
+}

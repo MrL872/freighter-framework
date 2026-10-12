@@ -1,0 +1,95 @@
+/* Vulnerability card (js/components/vulnCard.js). Same overlay/panel
+   language as settings.css's dialog, under its own class names so the two
+   stay independent. */
+.vuln-card-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+}
+.vuln-card-panel {
+  width: min(560px, 100%); max-height: calc(100vh - 32px); overflow-y: auto;
+  background: var(--panel); border: 3px double var(--muted);
+  padding: 0 16px 16px; color: var(--text);
+  font-family: var(--mono); font-size: 0.85rem;
+}
+/* Open fades the overlay in and the panel in with a slight rise, both
+   "both" so they hold their end state once the animation finishes. Close
+   is triggered by vulnCard.js adding .is-closing, which plays the reverse
+   pair; vulnCard.js waits out CLOSE_MS (matching the .18s duration below)
+   before actually removing the overlay from the DOM. */
+@keyframes vuln-card-overlay-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes vuln-card-overlay-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes vuln-card-panel-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes vuln-card-panel-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(12px) scale(0.98); }
+}
+.vuln-card-overlay { animation: vuln-card-overlay-in 0.2s ease-out both; }
+.vuln-card-overlay.is-closing { animation: vuln-card-overlay-out 0.18s ease-in both; }
+.vuln-card-panel { animation: vuln-card-panel-in 0.2s ease-out both; }
+.vuln-card-overlay.is-closing .vuln-card-panel { animation: vuln-card-panel-out 0.18s ease-in both; }
+@media (prefers-reduced-motion: reduce) {
+  .vuln-card-overlay,
+  .vuln-card-overlay.is-closing,
+  .vuln-card-panel,
+  .vuln-card-overlay.is-closing .vuln-card-panel { animation: none; }
+}
+.vuln-card-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--muted); }
+.vuln-card-head h2 { margin: 0; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 400; }
+.vuln-card-close {
+  background: transparent; border: 0; color: var(--muted);
+  font: inherit; padding: 2px 4px; cursor: pointer;
+}
+.vuln-card-close:hover, .vuln-card-close:focus-visible { color: var(--ok); }
+
+.vuln-card-body { display: flex; flex-direction: column; gap: 4px; padding-top: 12px; }
+.vuln-card-field { display: flex; gap: 10px; padding: 3px 0; }
+.vuln-card-label {
+  flex: none; width: 90px; color: var(--muted); text-transform: uppercase;
+  letter-spacing: 0.08em; font-size: 0.7rem; padding-top: 2px;
+}
+.vuln-card-value { flex: 1; min-width: 0; word-break: break-word; }
+
+.vuln-card-section { padding: 10px 0; border-top: 1px dashed var(--border); }
+.vuln-card-section h3 { margin: 0 0 6px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 400; color: var(--muted); }
+.vuln-card-text { margin: 0 0 10px; white-space: pre-wrap; word-break: break-word; }
+.vuln-card-text:last-child { margin-bottom: 0; }
+/* Description/Remediation each get a "[Copy]" next to their own heading.
+   .bracket-copy-btn is the same bracketed-text copy button Project
+   Folder's file viewer and the control panel's command preview use, but
+   those both only ever load alongside worker-view.css -- the ledger (and
+   so this card) doesn't, so the base look is defined here too, scoped
+   under .vuln-card-panel, rather than assuming that sheet is present. */
+.vuln-card-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0 0 6px; }
+.vuln-card-section-head h3 { margin: 0; }
+.vuln-card-panel .bracket-copy-btn {
+  position: static; background: none; border: 0; color: var(--muted);
+  font-family: var(--mono); font-size: 0.75rem; cursor: pointer; padding: 0;
+  text-transform: uppercase;
+}
+.vuln-card-panel .bracket-copy-btn:hover { color: var(--ok); }
+
+.vuln-card-actions { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; border-top: 1px solid var(--muted); }
+.vuln-card-action-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.vuln-card-status-btn, .vuln-card-delete-btn {
+  background: transparent; border: 1px solid var(--border); color: var(--muted);
+  font: inherit; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em;
+  padding: 6px 10px; cursor: pointer;
+}
+.vuln-card-status-btn:hover:not(:disabled), .vuln-card-status-btn:focus-visible:not(:disabled) { color: var(--ok); border-color: var(--ok); }
+.vuln-card-status-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.vuln-card-delete-btn { color: var(--bad, #c77); border-color: var(--bad, #c77); }
+/* No background fill on hover/focus (an earlier version of this rule had
+   one) -- this app's dark theme has every semantic color, including
+   --bad, set to plain white (see base.css), so filling the background
+   turned the button into a solid white block for as long as the mouse
+   sits over it, which is exactly when its label becomes "Click again to
+   confirm delete" -- unreadable right when it matters most. No separate
+   hover feedback is needed here: the label change on click already is
+   the feedback. */
+.vuln-card-delete-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.vuln-card-msg { margin: 0; min-height: 1.2em; color: var(--muted); font-size: 0.75rem; }

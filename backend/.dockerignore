@@ -1,0 +1,22 @@
+# Never send these into the build context.
+.git
+.gitignore
+.dockerignore
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.jks
+*.log
+*.tmp
+*.temp
+*.swp
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+
+# Maven output is rebuilt inside the image.
+target/

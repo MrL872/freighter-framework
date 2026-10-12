@@ -1,0 +1,49 @@
+.metrics { height: 100%; overflow: auto; padding: 12px 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); grid-auto-rows: 1fr; gap: 12px; align-items: stretch; border-bottom: 1px solid var(--border); }
+/* Toggled from the [ view ] menu's "Hide/Show Overview Metrics" item (see
+   js/metricsVisibility.js) — the flag lives on <html>, not on .metrics
+   itself, since .metrics is rebuilt from scratch whenever the overview
+   markup is replaced and restored. display: none can't be transitioned, so
+   collapsing is done by animating main's grid row for .metrics down to 0fr
+   instead (see base.css) — .metrics just needs to be clipped once that row
+   has no height, which its own overflow: auto already does. */
+.panel { display: flex; flex-direction: column; height: 100%; border: 3px double var(--muted); background: var(--panel); overflow: hidden; }
+.panel-head { flex: none; padding: 6px 12px; border-bottom: 1px solid var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.8rem; }
+.panel-row { display: flex; flex: 1; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 12px; border-bottom: 1px dashed var(--border); white-space: nowrap; }
+.panel-row:last-child { border-bottom: 0; }
+.panel-row .k { color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75rem; }
+.panel-row .v { overflow: hidden; text-overflow: ellipsis; }
+.panel-row .track { flex: 1; height: 8px; border: 1px solid var(--border); }
+.panel-row .fill { height: 100%; background: var(--ok); }
+.panel-row .ticks { flex: 1; display: flex; gap: 3px; height: 8px; }
+.panel-row .tick { flex: 1; height: 100%; border: 1px solid var(--border); background: transparent; }
+.panel-row .tick.lit { background: var(--ok); }
+.state-ok { color: var(--ok); }
+.state-bad { color: var(--muted); text-decoration: line-through; }
+
+/* Services panel: Frontend gets a normal fixed-height row, but the worker/
+   service list below it can run to two dozen+ entries -- those scroll
+   inside their own flexible area instead of each row shrinking to fit, or
+   the whole panel growing and throwing off every other metric panel's
+   height (.metrics gives every panel the same row height via
+   grid-auto-rows: 1fr). */
+.panel-row.fixed { flex: none; }
+.panel-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
+.panel-scroll .panel-row { flex: none; padding: 3px 12px; }
+
+/* Panel drag-and-drop reordering (see setupMetricsSortable() in index.js,
+   makeSortable() in dragReorder.js) — same native-HTML5-drag principle as
+   the ledger's column headers and the links sidebar, applied to a wrapping
+   grid: the browser's own drag ghost image is what shows the user where
+   the panel is being moved to, while the actual element dims in place
+   until the drop lands. Only '.panel-head' is a drag handle — it shows the
+   grab cursor to signal that; the rest of the panel stays plain/scrollable.
+   user-select: none keeps a click-drag on the title text from starting a
+   text selection instead of (or as well as) the element drag — browsers
+   otherwise often pick text selection when the gesture starts directly
+   over text, which made dragging from here feel like it barely worked at
+   all. */
+.metrics .panel-head { cursor: grab; user-select: none; -webkit-user-drag: element; }
+.metrics > [data-component].dragging { opacity: 0.4; }
+@media (prefers-reduced-motion: reduce) {
+  .metrics > [data-component] { transition: none !important; }
+}

@@ -1,0 +1,33 @@
+{
+  "defaultMode": "local",
+  "defaultTimeoutSeconds": 900,
+  "cloud": {
+    "enabled": false,
+    "endpoint": "",
+    "apiKeyEnv": "MCP_CLOUD_API_KEY"
+  },
+  "workers": {
+    "subfinder": { "baseUrl": "http://subfinder-worker:8080", "mode": "local" },
+    "puredns": { "baseUrl": "http://puredns-worker:8080", "mode": "local" },
+    "shuffledns": { "baseUrl": "http://shuffledns-worker:8080", "mode": "local" },
+    "masscan": { "baseUrl": "http://masscan-worker:8080", "mode": "local" },
+    "nmap": { "baseUrl": "http://nmap-worker:8080", "mode": "local" },
+    "metasploit": { "baseUrl": "http://metasploit-worker:8080", "mode": "local" },
+    "dirsearch": { "baseUrl": "http://dirsearch-worker:8080", "mode": "local" },
+    "ffuf": { "baseUrl": "http://ffuf-worker:8080", "mode": "local" },
+    "nuclei": { "baseUrl": "http://nuclei-worker:8080", "mode": "local" },
+    "katana": { "baseUrl": "http://katana-worker:8080", "mode": "local" },
+    "gau": { "baseUrl": "http://gau-worker:8080", "mode": "local" },
+    "gitleaks": { "baseUrl": "http://gitleaks-worker:8080", "mode": "local" },
+    "gowitness": { "baseUrl": "http://gowitness-worker:8080", "mode": "local" },
+    "xsstrike": { "baseUrl": "http://xsstrike-worker:8080", "mode": "local" },
+    "sqlmap": { "baseUrl": "http://sqlmap-worker:8080", "mode": "local" },
+    "sstimap": { "baseUrl": "http://sstimap-worker:8080", "mode": "local" },
+    "nosqlmap": { "baseUrl": "http://nosqlmap-worker:8080", "mode": "local" },
+    "fuxploider": { "baseUrl": "http://fuxploider-worker:8080", "mode": "local" },
+    "wafw00f": { "baseUrl": "http://wafw00f-worker:8080", "mode": "local" },
+    "jwt-tool": { "baseUrl": "http://jwt-tool-worker:8080", "mode": "local" },
+    "hydra": { "baseUrl": "http://hydra-worker:8080", "mode": "local" },
+    "wpscan": { "baseUrl": "http://wpscan-worker:8080", "mode": "local" }
+  }
+}

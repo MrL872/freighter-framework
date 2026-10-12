@@ -1,0 +1,38 @@
+# Metasploit-worker
+
+Metasploit console, long-lived (answer prompts with /input), in a container. Long-lived session.
+
+## Files
+
+- `Dockerfile` -- builds the wrapper and declares `ARG TOOL_IMAGE` (no default). Set the Docker Hub image in `../../data/worker-images.env`, not here.
+  The tool image must have `msfconsole` on `PATH`.
+- `main.go`, `ws.go`, `input.go` -- Go HTTP+WebSocket server. Runs the tool as a child
+  process (`exec.Command`, never a shell). `input.go` holds the stdin pipe for `/input`.
+
+## HTTP API (port `$METASPLOIT_WORKER_PORT`, default 8080)
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/health` | liveness |
+| GET | `/status` | `idle` or `running` |
+| POST | `/run` | body `{"args": [...], "interactive": false}`; `interactive: true` opens stdin; 202 started, 409 busy |
+| POST | `/stop` | cancel the running tool; 409 when idle |
+| POST | `/input` | body `{"text": "..."}`; writes one line to the tool's stdin; 409 when no run accepts input |
+| GET | `/ws` | live feed: `line`, `input`, `error`, `result` frames; history replayed to new viewers |
+| GET | `/history` | every frame of the current or latest run, as JSON; the MCP gateway reads it |
+
+## Behavior
+
+Long-lived: `POST /run` starts the tool and it keeps running until `POST /stop`
+or until it exits. Use `POST /input` to answer its prompts.
+
+## Called by
+
+- Backend: Not called by the backend yet. The MCP gateway config (`data/mcp-gateway/config.json`) lists it.
+- Frontend: —
+
+## Notes
+
+- Runs as UID 10001 with `HOME=/tmp`.
+- Session worker: the MCP gateway or an image with an MCP wrapper preinstalled can replace
+  this worker. See `mcp-gateway/README.md`.

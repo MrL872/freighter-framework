@@ -1,0 +1,4 @@
+# Heap for the single-node vulnerability index. Container memory limits (if any)
+# should comfortably exceed this.
+-Xms512m
+-Xmx512m

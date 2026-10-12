@@ -1,0 +1,487 @@
+/* main normally lays out two rows (metrics/ledger); the worker view adds a
+   third row on top for the back bar, so it overrides main's grid rows only
+   while main.dataset.worker is set. */
+main[data-worker], main[data-page] { grid-template-rows: auto minmax(0, 1fr); }
+
+.worker-bar {
+  display: flex; align-items: center; gap: 12px; padding: 6px 16px;
+  border-bottom: 1px solid var(--border); background: var(--panel);
+}
+.worker-bar .worker-name { color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.8rem; }
+
+/* Four instrument boxes, each exactly a quarter of the grid — a 2x2 layout,
+   same shape as the metrics grid. Drag-and-drop reordering (see
+   setupWorkerGridSortable() in index.js) is the same principle applied
+   there, just scoped to this grid instead of .metrics. */
+.worker-grid {
+  min-height: 0; overflow: auto; padding: 12px 16px;
+  display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr);
+  gap: 12px;
+}
+.worker-grid > [data-component] {
+  min-height: 0; min-width: 0; display: flex; flex-direction: column;
+  border: 3px double var(--muted); background: var(--panel); overflow: hidden;
+}
+/* While dragging (see makeFixedSortable() in index.js), the grabbed box is
+   position: fixed and actually is the thing following the cursor now,
+   rather than a dimmed placeholder left behind under a separate native
+   ghost image — so it gets a lifted look instead of just fading out. */
+.worker-grid > [data-component].dragging { opacity: 0.85; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); }
+@media (prefers-reduced-motion: reduce) {
+  .worker-grid > [data-component] { transition: none !important; }
+}
+
+/* Only '.panel-head' is a drag handle (see makeFixedSortable's
+   handleSelector in index.js) — it shows the grab cursor to signal that;
+   the rest of the box stays plain/scrollable/clickable. user-select: none
+   keeps a click-drag on the title text from starting a text selection
+   instead of (or as well as) the element drag — browsers otherwise often
+   pick text selection when the gesture starts directly over text, which
+   made dragging from here feel like it barely worked at all. */
+.worker-grid .panel-head {
+  flex: none; padding: 6px 12px; border-bottom: 1px solid var(--muted);
+  text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.8rem;
+  cursor: grab; user-select: none; -webkit-user-drag: element;
+}
+.worker-grid .hint { margin: 0; padding: 12px; color: var(--muted); font-size: 0.85rem; }
+
+/* Terminal Focus (toggled from the [ view ] menu -- see js/terminalFocus.js):
+   shrinks the three secondary boxes into a compact row across the top and
+   gives the live terminal the rest of the grid below them, so the live
+   stdout has real room to breathe instead of jittering the whole 2x2 layout
+   around inside a small worker-view window. The terminal's grid cell is
+   pinned by its data-component attribute rather than by DOM order, so this
+   still works whichever way the three boxes have been drag-reordered (see
+   setupWorkerGridSortable() in index.js) -- only their shared top row
+   changes, not which box the terminal itself is. */
+html.terminal-focus .worker-grid {
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: 220px minmax(0, 1fr);
+}
+html.terminal-focus .worker-grid > [data-component="live-terminal"] {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+html.terminal-focus .worker-grid > [data-component]:not([data-component="live-terminal"]) {
+  grid-row: 1;
+}
+/* Not draggable while pinned (see isDraggable in setupWorkerGridSortable(),
+   index.js) -- the grab cursor is dropped to match, so the handle doesn't
+   invite a drag that would silently refuse to start. */
+html.terminal-focus .worker-grid > [data-component="live-terminal"] > .panel-head {
+  cursor: default;
+}
+
+/* Project Folder (see showProjectFolder()/buildProjectFileRow() in
+   index.js), reusing the worker view's back-bar chrome. Each saved file is
+   its own <li class="pf-item"> — built as its own node — holding a .pf-row
+   flex container (name/meta left, rename/delete symbol buttons right) and
+   a collapsible .pf-content-wrap revealing the saved file's contents,
+   toggled by the chevron next to its name. */
+.project-folder-body { flex: 1; min-height: 0; overflow: auto; padding: 16px; }
+.project-folder-body .hint { margin: 0 0 12px; color: var(--muted); font-size: 0.85rem; }
+.project-folder-files { list-style: none; margin: 0; padding: 0; }
+.pf-item { border-bottom: 1px dashed var(--border); }
+.pf-item:last-child { border-bottom: 0; }
+.pf-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 8px; font-size: 0.85rem;
+  outline: 1px solid #fff; outline-offset: -1px;
+}
+.pf-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.pf-name-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.pf-name { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pf-meta { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.pf-rename-input {
+  background: var(--panel); color: var(--text); border: 1px solid var(--ok);
+  font-family: inherit; font-size: inherit; padding: 1px 4px; width: 100%;
+}
+.pf-chevron {
+  flex: none; background: transparent; border: 0; color: var(--muted);
+  padding: 0 2px; line-height: 1; cursor: pointer;
+}
+.pf-chevron:hover { color: var(--ok); }
+.pf-chevron .glyph {
+  display: inline-block; font-size: 0.8rem; transform: rotate(0deg); transition: transform 0.2s ease;
+}
+.pf-chevron[aria-expanded="true"] .glyph { transform: rotate(90deg); }
+.pf-actions { display: flex; align-items: center; gap: 4px; flex: none; }
+.pf-action {
+  background: transparent; border: 1px solid var(--border); color: var(--muted);
+  padding: 2px 6px; font-family: inherit; font-size: 0.8rem; line-height: 1.4; cursor: pointer;
+}
+.pf-action:hover { color: var(--ok); border-color: var(--ok); }
+.pf-action.pf-delete:hover { color: var(--bad); border-color: var(--bad); }
+.pf-empty { color: var(--muted); padding: 8px 0; border-bottom: 0; }
+
+/* Import dropzone: host filesystem -> project storage only, one-way (see
+   projectFolder.importFile) — no matching control anywhere lets a saved
+   file be written back out to disk. */
+.pf-dropzone {
+  border: 1px dashed var(--border); border-radius: 2px; padding: 16px;
+  text-align: center; color: var(--muted); font-size: 0.85rem; cursor: pointer;
+  margin-bottom: 8px; transition: border-color 0.15s ease, color 0.15s ease;
+}
+.pf-dropzone p { margin: 0; }
+.pf-dropzone-types { display: inline-block; margin-top: 4px; font-size: 0.75rem; }
+.pf-dropzone:hover, .pf-dropzone:focus-visible { border-color: var(--ok); color: var(--text); outline: none; }
+.pf-dropzone.pf-drag-active { border-color: var(--ok); color: var(--text); background: rgba(255, 255, 255, 0.03); }
+.pf-import-status { margin: 0 0 12px; font-size: 0.8rem; color: var(--ok); min-height: 1.2em; }
+.pf-import-status.pf-import-error { color: var(--bad); }
+
+/* Same auto-height-friendly grid-row rollout as the links sidebar's group
+   expansion (see .link-group-items-wrap in links.css) — the whole window,
+   toolbar included, collapses/expands as one unit. */
+.pf-content-wrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.2s ease; }
+.pf-content-wrap.open { grid-template-rows: 1fr; }
+.pf-content-wrap > .pf-content-inner { overflow: hidden; min-height: 0; border: 1px solid var(--border); }
+/* Toolbar (Copy/Edit) sits atop the content, inside the same collapsing
+   box — .bracket-copy-btn is normally absolutely positioned over its own
+   box (see base rule in this file), overridden here since it needs to sit
+   in flow at the end of this flex row instead. */
+.pf-content-toolbar { display: flex; justify-content: flex-end; gap: 12px; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.pf-content-toolbar .bracket-copy-btn { position: static; }
+.pf-content-wrap .pf-content,
+.pf-content-wrap .pf-content-edit {
+  margin: 0; padding: 10px;
+  background: #0a0a0a; color: var(--ok); font-family: var(--mono); font-size: 0.8rem;
+  white-space: pre-wrap; word-break: break-word; max-height: 240px; overflow-y: auto;
+}
+.pf-content-edit { resize: vertical; width: 100%; box-sizing: border-box; border: 0; }
+.pf-content-edit:focus-visible { outline: 1px dashed var(--ok); outline-offset: -2px; }
+
+/* Image Storage: a basic two-level filesystem browser, not Project
+   Folder's flat row list. showImageFolder() lists one folder box per
+   target (renderImageFolderList()); clicking one navigates to
+   showImageTargetFolder(), that target's own page of medium screenshot
+   boxes (renderImageGrid()/buildImageBox()) -- mirroring the real
+   <profileId>/<target>/... layout gowitness-worker already saves to on
+   disk (see ImageFileService). */
+.image-storage-body { flex: 1; min-height: 0; overflow: auto; padding: 16px; }
+.image-storage-body .hint { margin: 0 0 12px; color: var(--muted); font-size: 0.85rem; }
+.image-empty { padding: 8px 0; }
+
+/* Top-level Image Storage view (showImageFolder() in index.js): one folder
+   box per target, a basic filesystem-style listing -- clicking a folder
+   navigates into showImageTargetFolder() instead of expanding anything in
+   place, mirroring the real <profileId>/<target>/... layout on disk. */
+.image-folder-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px;
+}
+/* Styled after a desktop file manager's icon view (Nautilus/Files, etc.):
+   a borderless tile with the folder icon sitting well clear of a soft
+   rounded highlight that only appears on hover/focus, rather than a boxed
+   rectangle always outlined (see the old border: 1px solid var(--border)
+   this replaced). The highlight reuses the same translucent-white tint
+   .pf-dropzone.pf-drag-active already uses elsewhere in this file -- it
+   reads as a light tint on this dark theme and, since the light theme is
+   the whole page inverted (html.inverted, js/theme.js) rather than a
+   separate palette, the same rgba(255,255,255,…) still reads as a
+   consistent soft tint there too. */
+.image-folder-box {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: transparent; border: 1px solid transparent; border-radius: 8px; color: var(--text);
+  padding: 18px 14px; cursor: pointer; font-family: inherit;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.image-folder-box:hover, .image-folder-box:focus-visible {
+  background: rgba(255, 255, 255, 0.07); border-color: var(--ok); outline: none;
+}
+.image-folder-box:hover .image-folder-name, .image-folder-box:focus-visible .image-folder-name { color: var(--ok); }
+/* Drag-and-drop reorderable (see makeSortable in index.js) -- same plain
+   dim-the-drag-source treatment as every other HTML5-drag sortable list in
+   the app (ledger columns, links sidebar, metrics panels). */
+.image-folder-box.dragging { opacity: 0.4; }
+/* Icon source (icons8-folder-24.png) is black-on-transparent -- grayscale(1)
+   invert(1) is the same trick .logo uses in base.css: it renders white on
+   this theme's default dark background, and html.inverted's own page-wide
+   invert(1) cancels it back to black for the light theme, so the folder
+   always contrasts with --bg either way instead of staying a barely-visible
+   dark glyph on a dark background. */
+.image-folder-icon { display: block; filter: grayscale(1) invert(1); }
+.image-folder-name { font-size: 0.85rem; word-break: break-all; text-align: center; }
+.image-folder-count { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+@media (prefers-reduced-motion: reduce) {
+  .image-folder-box { transition: none; }
+}
+
+/* One target's own page (showImageTargetFolder()): medium screenshot boxes
+   -- bigger than the folder boxes above, since there's only ever one grid
+   of them on screen at a time here instead of a whole folder list sharing
+   the page with them. */
+.image-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px;
+}
+/* Same borderless file-manager tile treatment as .image-folder-box above --
+   the whole tile (thumbnail + caption) gets a soft rounded highlight on
+   hover/focus instead of a border fixed to the thumbnail. position:
+   relative stays here (not moved to the thumbnail) since .image-box-actions
+   still anchors to this box; its top/right offsets below account for the
+   padding this box now has. */
+.image-box {
+  position: relative; display: flex; flex-direction: column; gap: 6px; min-width: 0;
+  border-radius: 8px; padding: 10px; transition: background-color 0.15s ease;
+}
+.image-box:hover, .image-box:focus-within { background: rgba(255, 255, 255, 0.07); }
+/* Drag-and-drop reorderable (see makeSortable in index.js) -- same plain
+   dim-the-drag-source treatment as every other HTML5-drag sortable list in
+   the app (ledger columns, links sidebar, metrics panels). */
+.image-box.dragging { opacity: 0.4; }
+.image-box-thumb {
+  display: block; width: 100%; aspect-ratio: 4 / 3; padding: 0; border: 0; border-radius: 6px;
+  background: #0a0a0a; cursor: pointer; overflow: hidden;
+}
+.image-box-thumb:focus-visible { outline: 1px dashed var(--ok); outline-offset: 2px; }
+.image-box-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* The caption is a real link (<a>) straight to the endpoint when one is
+   known (see buildImageBox in index.js) -- same muted color as plain text
+   at rest, so it doesn't look like a conspicuous hyperlink until hovered. */
+.image-box-caption {
+  display: block; font-size: 0.78rem; color: var(--muted); white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; text-decoration: none; text-align: center;
+}
+a.image-box-caption:hover, a.image-box-caption:focus-visible { color: var(--ok); text-decoration: underline; outline: none; }
+.image-box-rename-input {
+  background: var(--panel); color: var(--text); border: 1px solid var(--ok);
+  font-family: inherit; font-size: 0.78rem; padding: 1px 4px; width: 100%; text-align: center;
+}
+/* Rename/delete icons sit over the thumbnail's top-right corner, dimmed
+   until the box is hovered/focused -- offset by .image-box's own padding
+   (10px) plus the original 6px inset from the thumbnail's corner. */
+.image-box-actions {
+  position: absolute; top: 16px; right: 16px; display: flex; gap: 3px;
+  opacity: 0; transition: opacity 0.15s ease;
+}
+.image-box:hover .image-box-actions, .image-box:focus-within .image-box-actions { opacity: 1; }
+.image-box-action {
+  background: rgba(10, 10, 10, 0.8); border: 1px solid var(--border); color: var(--muted);
+  padding: 2px 7px; font-family: inherit; font-size: 0.78rem; line-height: 1.4; cursor: pointer;
+}
+.image-box-action:hover { color: var(--ok); border-color: var(--ok); }
+.image-box-action.image-box-delete:hover { color: var(--bad); border-color: var(--bad); }
+@media (prefers-reduced-motion: reduce) {
+  .image-box { transition: none; }
+}
+
+/* Lightbox: click a box's thumbnail to magnify it. The backdrop is
+   deliberately much more transparent than this app's other overlays (e.g.
+   .wordlist-overlay) so the grid stays visible/legible behind it instead of
+   being hidden -- the point is a closer look, not a separate page. */
+.image-lightbox-overlay {
+  position: fixed; inset: 0; z-index: 1200;
+  background: rgba(0, 0, 0, 0.25); backdrop-filter: blur(2px);
+  display: flex; align-items: center; justify-content: center; padding: 32px;
+}
+.image-lightbox-frame { position: relative; max-width: 90vw; max-height: 90vh; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.image-lightbox-img {
+  display: block; max-width: 90vw; max-height: 80vh; width: auto; height: auto;
+  border: 1px solid var(--border); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6); background: #0a0a0a;
+}
+.image-lightbox-caption {
+  max-width: 90vw; color: var(--text); background: rgba(10, 10, 10, 0.7);
+  padding: 3px 10px; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.image-lightbox-close {
+  position: absolute; top: -14px; right: -14px; width: 28px; height: 28px;
+  background: var(--panel); border: 1px solid var(--border); color: var(--text);
+  font-size: 0.9rem; line-height: 1; cursor: pointer;
+}
+.image-lightbox-close:hover, .image-lightbox-close:focus-visible { color: var(--ok); border-color: var(--ok); outline: none; }
+@media (prefers-reduced-motion: reduce) {
+  .image-box-actions { transition: none; }
+}
+
+/* Syntax coloring for .json/.yaml saves (see highlightJson()/highlightYaml()
+   in index.js) — this app's theme is otherwise monochrome, but a flat white
+   dump of a structured file is hard to scan, so these tokens get real color
+   instead of reusing the (all-white) theme variables. Plain .txt content
+   stays untouched — escapeHtml() with no tokens wrapped in. */
+.tok-string { color: #7ee787; }
+.tok-number { color: #ffab70; }
+.tok-keyword { color: #ff7b72; }
+.tok-punct { color: #8b949e; }
+.tok-key { color: #79c0ff; }
+@media (prefers-reduced-motion: reduce) {
+  .pf-content-wrap, .pf-chevron .glyph { transition: none; }
+}
+
+/* Control panel: two expandable flag groups above a fixed command preview. */
+.control-body { flex: 1; min-height: 0; overflow: auto; }
+.flag-group { border-bottom: 1px dashed var(--border); }
+.flag-group:last-child { border-bottom: 0; }
+.flag-group-head {
+  display: flex; align-items: center; width: 100%; padding: 8px 12px;
+  background: transparent; border: 0; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75rem;
+  text-align: left; cursor: pointer;
+}
+.flag-group-head:hover { color: var(--ok); }
+.flag-group-head .glyph {
+  display: inline-block; margin-right: 8px; color: var(--accent);
+  transform: rotate(0deg); transition: transform 0.2s ease;
+}
+.flag-group-head[aria-expanded="true"] .glyph { transform: rotate(90deg); }
+/* Same auto-height-friendly grid-row trick as the links sidebar's group
+   rollout (see .link-group-items-wrap in links.css). */
+.flag-group-body-wrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.2s ease; }
+.flag-group-head[aria-expanded="true"] + .flag-group-body-wrap { grid-template-rows: 1fr; }
+.flag-group-body { overflow: hidden; min-height: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .flag-group-head .glyph, .flag-group-body-wrap { transition: none; }
+}
+.command-preview {
+  position: relative; flex: none; display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; border-top: 1px solid var(--muted);
+  background: #1a1a1a; font-size: 0.85rem; overflow: hidden;
+}
+.command-preview .prompt { color: var(--ok); flex: none; }
+.command-preview .cmd-text {
+  flex: 1; min-width: 0; margin: 0; padding: 0; border: 0; outline: 0; background: transparent;
+  color: var(--text); font: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.command-preview .bracket-copy-btn { top: 50%; right: 10px; transform: translateY(-50%); }
+.command-preview .cmd-name { color: var(--text); flex: none; white-space: nowrap; }
+/* [Reset] [Clear] [Copy] sit in one row at the right edge, in normal flow. */
+.command-preview .cmd-actions { flex: none; display: flex; align-items: center; gap: 12px; }
+.command-preview .cmd-actions .bracket-copy-btn { position: static; transform: none; }
+/* Shown instead of applying anything when a hand-typed command doesn't parse
+   (see commandPreview.js's tryApply()) -- [Reset] is the escape hatch back
+   to the last valid, actually-running flag set. */
+.cmd-error { margin: 0; padding: 4px 12px 0; color: var(--bad, #c77); font-size: 0.75rem; }
+
+/* Copy-to-clipboard link styled as bracketed terminal-ish text, e.g.
+   "[Copy]" — shared by the wordlist box and the send-output results box,
+   both positioned in the box's top-right corner. */
+.bracket-copy-btn {
+  position: absolute; top: 6px; right: 10px; background: none; border: 0;
+  color: var(--muted); font-family: var(--mono); font-size: 0.75rem; cursor: pointer; padding: 0;
+  text-transform: uppercase;
+}
+.bracket-copy-btn:hover { color: var(--ok); }
+
+/* Custom wordlist/template: freeform input plus a render-format picker. */
+.wordlist-body { position: relative; flex: 1; min-height: 0; display: flex; }
+.wordlist-input {
+  flex: 1; resize: none; border: 0; margin: 0; padding: 12px 56px 12px 12px;
+  background: transparent; color: var(--text); font-family: var(--mono); font-size: 0.85rem;
+}
+.wordlist-input:focus-visible { outline: 1px dashed var(--ok); outline-offset: -2px; }
+.wordlist-foot {
+  flex: none; height: 37.0667px; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 12px; border-top: 1px solid var(--muted); box-sizing: border-box;
+  text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75rem; color: var(--muted);
+}
+.wordlist-name-group { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+.wordlist-format-group { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.wordlist-right-group { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.wordlist-format { background: var(--panel); color: var(--text); border: 1px solid var(--border); font-family: inherit; font-size: inherit; padding: 2px 6px; }
+/* Editable "<name>" half of the saved "<name>-<timestamp>.<ext>" filename --
+   the numeric suffix itself is never shown here, only generated at save time
+   (see wordlist-template.js's sanitizeNamePrefix/Date.now() and
+   send-output.js's own matching pair). */
+.wordlist-name {
+  width: 110px; min-width: 0; background: var(--panel); color: var(--text); border: 1px solid var(--border);
+  font-family: inherit; font-size: inherit; padding: 2px 6px;
+}
+.wordlist-right-group > button {
+  max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  background: transparent; border: 1px solid var(--border); color: var(--muted);
+  font-family: inherit; text-transform: uppercase; letter-spacing: 0.08em; font-size: inherit;
+  padding: 2px 8px; cursor: pointer;
+}
+.wordlist-right-group > button:hover:not(:disabled) { color: var(--ok); border-color: var(--ok); }
+.wordlist-right-group > button:disabled { cursor: not-allowed; opacity: 0.5; }
+
+/* Live caption terminal: a scrolling, cmd-styled readout. */
+.terminal-output {
+  flex: 1; min-height: 0; overflow: auto; padding: 12px;
+  background: #0a0a0a; color: var(--ok); font-family: var(--mono); font-size: 0.8rem;
+  white-space: pre-wrap;
+}
+.terminal-output .hint { padding: 0; color: var(--muted); }
+.terminal-output .cursor { margin-left: 2px; }
+/* The worker's "partial" frame (see live-terminal.js's renderPartial) -- a
+   still-growing, not-yet-finished line (e.g. a progress bar mid-redraw),
+   updated in place rather than appended as a new permanent line each time.
+   Dimmed so it visibly reads as "still in progress" next to the solid
+   finished lines around it. */
+.terminal-output .terminal-live { opacity: 0.6; }
+.terminal-control {
+  flex: none; height: 37.0667px; display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; border-top: 1px solid var(--muted); box-sizing: border-box;
+}
+.terminal-control button {
+  background: transparent; border: 1px solid var(--border); color: var(--text);
+  padding: 4px 12px; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75rem; cursor: pointer;
+}
+.terminal-control button:hover:not(:disabled) { border-color: var(--ok); color: var(--ok); }
+.terminal-control button:disabled { color: var(--muted); opacity: 0.5; cursor: not-allowed; }
+
+.terminal-input-row {
+  flex: none; display: flex; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--muted); box-sizing: border-box;
+}
+.terminal-input-row input {
+  flex: 1; min-width: 0; background: transparent; border: 1px solid var(--border); color: inherit;
+  padding: 4px 8px; font: inherit; font-size: 0.85rem;
+}
+.terminal-input-row button {
+  background: transparent; border: 1px solid var(--border); color: var(--muted);
+  padding: 4px 12px; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75rem; cursor: pointer;
+}
+.terminal-input-row button:disabled, .terminal-input-row input:disabled { opacity: 0.5; cursor: not-allowed; }
+
+
+/* Send output: review box + copy/Save to Project's Folder actions above a
+   placeholder "send to chat" (Telegram bot) form, not wired up yet. */
+.send-output-body { flex: 1; min-height: 0; overflow: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+
+.output-box-wrap { position: relative; flex: none; }
+.output-box {
+  min-height: 120px; max-height: 220px; overflow: auto; padding: 10px 56px 10px 10px;
+  background: #0a0a0a; color: var(--ok); font-family: var(--mono); font-size: 0.8rem;
+  white-space: pre-wrap; border: 1px solid var(--border);
+}
+.output-box .hint { padding: 0; color: var(--muted); }
+.output-box:focus-visible { outline: 1px dashed var(--ok); outline-offset: -2px; }
+
+.send-output-body label { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75rem; color: var(--muted); display: block; margin-bottom: 4px; }
+.send-output-body select, .send-output-body input {
+  width: 100%; background: var(--panel); color: var(--text); border: 1px solid var(--border);
+  font-family: inherit; font-size: 0.85rem; padding: 6px 8px;
+}
+.send-output-body button:not(.bracket-copy-btn) {
+  align-self: flex-start; background: transparent; border: 1px solid var(--border); color: var(--muted);
+  padding: 6px 14px; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75rem; cursor: pointer;
+}
+.send-output-body button:not(.bracket-copy-btn):hover:not(:disabled) { color: var(--ok); border-color: var(--ok); }
+.send-output-body button:not(.bracket-copy-btn):disabled { cursor: not-allowed; opacity: 0.5; }
+
+/* "[SAVE TO PROJECT'S FOLDER] as [.txt]" — the save button plus an
+   expandable list of save formats (see FORMATS in send-output.js), same
+   open/close-on-outside-click pattern as menu.js's own dropdowns. */
+.send-save-row { display: flex; align-items: center; gap: 8px; }
+.send-save-as { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.send-format-picker { position: relative; align-self: center; }
+.send-format-picker .send-format-btn { align-self: auto; padding: 6px 10px; font-family: var(--mono); }
+/* Same fade/slide-in treatment as the header's dropdowns (see menu.css) —
+   .open replaces the `hidden` attribute so the transition can run instead
+   of snapping between display: none and block. */
+.send-format-list {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 10; min-width: 90px;
+  background: var(--panel); border: 1px solid var(--ok); list-style: none; margin: 0; padding: 4px 0;
+  opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(-6px);
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0s linear 0.15s;
+}
+.send-format-list.open {
+  opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(0);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .send-format-list { transition: opacity 0.15s ease, visibility 0s linear 0.15s; transform: none; }
+  .send-format-list.open { transition: opacity 0.15s ease; }
+}
+.send-format-list li {
+  padding: 4px 12px; color: var(--text); font-size: 0.8rem; cursor: pointer; white-space: nowrap;
+}
+.send-format-list li:hover { background: #1f1f1f; color: var(--ok); }
+.send-format-list li[aria-selected="true"] { color: var(--ok); }
